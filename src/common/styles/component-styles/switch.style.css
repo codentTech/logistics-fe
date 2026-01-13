@@ -1,0 +1,45 @@
+
+.custom_switch_input{
+    appearance: none;
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    -ms-progress-appearance: none;
+  
+    height: 22px;
+    width: 47px;
+    border-radius: 16px;
+    padding: 3px;
+  
+    border: 0.854545px solid #BBBBBB;
+    border-radius: 15.3818px;
+  
+    position: relative;
+    background-color: #ffffff;
+  
+    transition: all .3s cubic-bezier(0.455, 0.03, 0.515, 0.955);
+  }
+  
+.custom_switch_input:checked{
+    background: #1D4ED8;
+    border-color: #1D4ED8;
+  }
+  
+.custom_switch_input::before{
+    content: '';
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    top: 2px;
+    border-radius: 50%;
+    background: #D9D9D9;
+
+    transition: all .3s cubic-bezier(0.455, 0.03, 0.515, 0.955);
+  }
+  
+.custom_switch_input:checked:before{
+    left: calc(100% - 18px);
+    top: 2px;
+    border-radius: 50%;
+    background: #FEFEFE;
+  }

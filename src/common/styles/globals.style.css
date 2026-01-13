@@ -1,0 +1,538 @@
+/* Enhanced Global Styles - OfficeHQ Indigo Theme */
+
+/* Modern font imports */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+/* Tailwind imports */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base layer - Global resets and typography */
+@layer base {
+  /* Enhanced global resets */
+  html {
+    scroll-behavior: smooth;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    @apply bg-white text-text-primary font-sans antialiased;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+
+  /* Remove number input arrows */
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Enhanced autofill styling */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px white inset !important;
+    -webkit-text-fill-color: theme("colors.text.primary") !important;
+  }
+
+  /* Focus styles for accessibility - exclude buttons */
+  *:focus-visible:not(.btn):not(button) {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+  
+  /* Buttons should have no focus ring */
+  button:focus-visible,
+  .btn:focus-visible {
+    @apply outline-none ring-0 ring-offset-0;
+  }
+
+  /* Typography hierarchy */
+  h1 {
+    @apply text-3xl font-bold text-text-primary;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold text-text-primary;
+  }
+
+  h3 {
+    @apply text-xl font-semibold text-text-primary;
+  }
+
+  h4 {
+    @apply text-lg font-medium text-text-secondary;
+  }
+
+  h5 {
+    @apply text-base font-medium text-text-secondary;
+  }
+
+  h6 {
+    @apply text-sm font-medium text-text-tertiary;
+  }
+
+  p {
+    @apply text-base text-text-secondary leading-relaxed;
+  }
+
+  /* Link styles */
+  a {
+    @apply text-primary-600 hover:text-primary-700 transition-colors duration-200;
+  }
+}
+
+/* Component layer - OfficeHQ Design System */
+@layer components {
+  /* === BUTTON SYSTEM === */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium 
+           rounded-md transition-all duration-200 focus:outline-none focus:ring-0 
+           focus:ring-offset-0 disabled:cursor-not-allowed
+           border border-transparent active:outline-none active:ring-0;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700 shadow-sm
+           disabled:bg-gray-300 disabled:text-gray-600;
+  }
+
+  .btn-secondary {
+    @apply btn bg-white text-text-secondary border-border-medium 
+           hover:bg-background-secondary shadow-sm
+           disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200;
+  }
+
+  .btn-outline {
+    @apply btn bg-transparent border-primary-500 text-primary-600 
+           hover:bg-primary-50
+           disabled:border-gray-300 disabled:text-gray-400 disabled:bg-transparent;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-text-tertiary hover:bg-background-secondary 
+           hover:text-text-secondary
+           disabled:text-gray-400 disabled:bg-transparent;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger-600 text-white hover:bg-danger-700 shadow-sm
+           disabled:bg-gray-300 disabled:text-gray-600;
+  }
+
+  .btn-success {
+    @apply btn bg-success-600 text-white hover:bg-success-700 shadow-sm;
+  }
+
+  /* Button sizes */
+  .btn-sm {
+    @apply h-8 px-3 text-xs;
+  }
+
+  .btn-md {
+    @apply h-10 px-4 text-sm;
+  }
+
+  .btn-lg {
+    @apply h-12 px-6 text-base;
+  }
+
+  /* === FORM SYSTEM === */
+  .form-group {
+    @apply space-y-2;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-text-primary;
+  }
+
+  .form-label-required::after {
+    @apply text-danger-500 ml-1;
+    content: "*";
+  }
+
+  .form-input {
+    @apply block w-full px-3 py-2 border border-border-light rounded-md 
+           text-text-primary placeholder-text-tertiary bg-white
+           focus:border-primary-500 focus:ring-0 focus:ring-offset-0 focus:outline-none
+           disabled:bg-background-tertiary disabled:text-text-tertiary
+           disabled:cursor-not-allowed transition-colors duration-200;
+  }
+
+  .form-input-error {
+    @apply border-danger-500 focus:border-danger-500 focus:ring-0 focus:ring-offset-0 focus:outline-none;
+  }
+
+  .form-textarea {
+    @apply form-input min-h-[100px] resize-y;
+  }
+
+  .form-select {
+    @apply form-input cursor-pointer;
+  }
+
+  .form-error {
+    @apply text-sm text-danger-600 mt-1;
+  }
+
+  .form-help {
+    @apply text-sm text-text-tertiary mt-1;
+  }
+
+  /* === CARD SYSTEM === */
+  .card {
+    @apply bg-white rounded-lg border border-border-light shadow-sm overflow-hidden;
+  }
+
+  .card-header {
+    @apply px-6 py-4 border-b border-border-light bg-background-secondary;
+  }
+
+  .card-title {
+    @apply text-lg font-semibold text-text-primary;
+  }
+
+  .card-subtitle {
+    @apply text-sm text-text-tertiary mt-1;
+  }
+
+  .card-body {
+    @apply px-6 py-4;
+  }
+
+  .card-footer {
+    @apply px-6 py-4 border-t border-border-light bg-background-secondary;
+  }
+
+  /* === BADGE/STATUS SYSTEM === */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply badge bg-primary-100 text-primary-800;
+  }
+
+  .badge-success {
+    @apply badge bg-success-100 text-success-800;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning-100 text-warning-800;
+  }
+
+  .badge-danger {
+    @apply badge bg-danger-100 text-danger-800;
+  }
+
+  .badge-info {
+    @apply badge bg-info-100 text-info-800;
+  }
+
+  .badge-neutral {
+    @apply badge bg-neutral-100 text-neutral-800;
+  }
+
+  /* === TABLE SYSTEM === */
+  .table {
+    @apply w-full border-collapse;
+  }
+
+  .table-header {
+    @apply bg-background-secondary;
+  }
+
+  .table-header-cell {
+    @apply px-6 py-3 text-left text-xs font-medium text-text-tertiary 
+           uppercase tracking-wider border-b border-border-light;
+  }
+
+  .table-cell {
+    @apply px-6 py-4 text-sm text-text-secondary border-b border-border-light;
+  }
+
+  .table-row {
+    @apply hover:bg-background-secondary transition-colors duration-150;
+  }
+
+  /* === ALERT SYSTEM === */
+  .alert {
+    @apply flex items-start p-4 rounded-lg border;
+  }
+
+  .alert-success {
+    @apply alert bg-success-50 border-success-200 text-success-800;
+  }
+
+  .alert-warning {
+    @apply alert bg-warning-50 border-warning-200 text-warning-800;
+  }
+
+  .alert-danger {
+    @apply alert bg-danger-50 border-danger-200 text-danger-800;
+  }
+
+  .alert-info {
+    @apply alert bg-info-50 border-info-200 text-info-800;
+  }
+
+  /* === LAYOUT SYSTEM === */
+  .container {
+    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .page-header {
+    @apply bg-white border-b border-border-light px-6 py-4;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold text-text-primary;
+  }
+
+  .page-subtitle {
+    @apply text-text-tertiary mt-1;
+  }
+
+  .sidebar {
+    @apply fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-border-light 
+           transform transition-transform duration-300 ease-in-out;
+  }
+
+  .main-content {
+    @apply flex-1 ml-64 min-h-screen bg-background-secondary;
+  }
+
+  /* === DASHBOARD SPECIFIC === */
+  .dashboard-card {
+    @apply card p-6;
+  }
+
+  .dashboard-stat-value {
+    @apply text-3xl font-bold text-text-primary;
+  }
+
+  .dashboard-stat-label {
+    @apply text-sm text-text-tertiary;
+  }
+
+  .dashboard-stat-change {
+    @apply text-sm font-medium;
+  }
+
+  .dashboard-stat-increase {
+    @apply dashboard-stat-change text-success-600;
+  }
+
+  .dashboard-stat-decrease {
+    @apply dashboard-stat-change text-danger-600;
+  }
+
+  /* === NAVIGATION === */
+  .nav-link {
+    @apply flex items-center px-4 py-2 text-sm font-medium rounded-md 
+           transition-colors duration-200;
+  }
+
+  .nav-link-active {
+    @apply nav-link bg-primary-100 text-primary-700;
+  }
+
+  .nav-link-inactive {
+    @apply nav-link text-text-tertiary hover:bg-background-secondary 
+           hover:text-text-secondary;
+  }
+
+  /* === UTILITIES === */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme("colors.neutral.300") theme("colors.neutral.100");
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-neutral-100;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-neutral-300 rounded-full hover:bg-neutral-400;
+  }
+
+  .loading-skeleton {
+    @apply bg-neutral-200 rounded animate-pulse;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent;
+  }
+
+  /* === RESPONSIVE GRID SYSTEM === */
+  .grid-responsive {
+    @apply grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3;
+  }
+
+  .grid-responsive-4 {
+    @apply grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  .grid-responsive-2 {
+    @apply grid gap-6 grid-cols-1 lg:grid-cols-2;
+  }
+
+  /* === FORM LAYOUTS === */
+  .form-container {
+    @apply max-w-2xl mx-auto;
+  }
+
+  .form-section {
+    @apply space-y-6;
+  }
+
+  .form-section-title {
+    @apply text-lg font-semibold text-text-primary border-b border-border-light pb-2;
+  }
+
+  .form-grid {
+    @apply grid gap-4 grid-cols-1 md:grid-cols-2;
+  }
+
+  .form-grid-3 {
+    @apply grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3;
+  }
+
+  /* === MODAL SYSTEM === */
+  .modal-overlay {
+    @apply fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4;
+  }
+
+  .modal-content {
+    @apply bg-white rounded-lg shadow-xl max-w-md w-full max-h-screen overflow-y-auto;
+  }
+
+  .modal-header {
+    @apply px-6 py-4 border-b border-border-light;
+  }
+
+  .modal-title {
+    @apply text-lg font-semibold text-text-primary;
+  }
+
+  .modal-body {
+    @apply px-6 py-4;
+  }
+
+  .modal-footer {
+    @apply px-6 py-4 border-t border-border-light bg-background-secondary 
+           flex justify-end space-x-3;
+  }
+}
+
+/* Utility layer - Custom utilities and overrides */
+@layer utilities {
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-in-out;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  /* Text utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Interaction utilities */
+  .cursor-help {
+    cursor: help;
+  }
+
+  .cursor-not-allowed {
+    cursor: not-allowed;
+  }
+
+  /* Layout utilities */
+  .full-height {
+    height: calc(100vh - 4rem);
+  }
+
+  .content-height {
+    height: calc(100vh - 8rem);
+  }
+}
+
+/* Keyframe animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Third-party component overrides (minimal and necessary only) */
+
+/* Date picker styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3e%3cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/%3e%3c/svg%3e");
+  background-size: 1.25rem;
+  background-repeat: no-repeat;
+  background-position: center;
+  cursor: pointer;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-break {
+    page-break-after: always;
+  }
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+  .dark {
+    /* Dark mode styles will go here when needed */
+  }
+}

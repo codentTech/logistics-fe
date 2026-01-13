@@ -1,0 +1,125 @@
+.dashboard-main {
+  display: grid;
+  grid-template-columns: 273px calc(100% - 273px);
+}
+.scroll-content {
+  max-height: calc(100vh - 68px);
+  overflow-y: auto;
+  scrollbar-color: #0a4c95 #c2d2e4;
+  scrollbar-width: thin !important;
+}
+.scroll-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll-content::-webkit-scrollbar-track-piece {
+  background-color: #c2d2e4;
+  border-radius: 4px;
+}
+.scroll-content::-webkit-scrollbar-thumb {
+  background-color: #0a4c95;
+  border-radius: 4px;
+}
+.navbar-main {
+  position: sticky;
+  z-index: 100;
+  top: 0;
+}
+.multistep-wrapper {
+  height: calc(100vh - 90px);
+  overflow-y: auto;
+  scrollbar-color: #0a4c95 #c2d2e4;
+  scrollbar-width: thin !important;
+}
+
+.multistep-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.multistep-wrapper::-webkit-scrollbar-track-piece {
+  background-color: #c2d2e4;
+  border-radius: 4px;
+}
+
+.multistep-wrapper::-webkit-scrollbar-thumb {
+  background-color: #0a4c95;
+  border-radius: 4px;
+}
+
+.multistep-wrapper > .MuiPaper-elevation::before {
+  content: unset !important;
+}
+.multistep-wrapper .MuiAccordionSummary-expandIconWrapper {
+  transform: rotate(-90deg);
+  font-size: 24px;
+}
+
+.multistep-wrapper .Mui-expanded .MuiAccordionSummary-expandIconWrapper {
+  transform: rotate(0deg);
+  font-size: 24px;
+}
+
+.multistep-wrapper .arrow-cotrol {
+  transition: all 0.3s ease;
+  font-size: 24px;
+}
+
+.multistep-wrapper .Mui-expanded .arrow-cotrol {
+  transform: rotate(90deg);
+}
+
+.multistep-wrapper .MuiAccordionSummary-expandIconWrapper svg path {
+  fill: #ffffff;
+}
+
+.multistep-wrapper .MuiAccordionSummary-content {
+  padding: 0px;
+  margin: 0px;
+}
+
+.multistep-wrapper .nav-link.active,
+.multistep-wrapper .nav-link:hover {
+  background-color: #ffffff;
+}
+
+.multistep-wrapper .nav-link-select {
+  background-color: #ffffff;
+}
+
+.multistep-wrapper .nav-link-select span {
+  color: #1d4ed8;
+}
+
+.multistep-wrapper .nav-link-select svg path {
+  fill: #1d4ed8;
+}
+
+.multistep-wrapper .nav-link.active a,
+.multistep-wrapper .nav-link.active span,
+.multistep-wrapper .nav-link:hover a,
+.multistep-wrapper .nav-link:hover span {
+  color: #1d4ed8;
+}
+
+.multistep-wrapper .nav-link.active svg path,
+.multistep-wrapper .nav-link:hover svg path {
+  fill: #1d4ed8;
+}
+
+.offcanva {
+  transition: all 0.4s ease-in;
+}
+
+@media screen and (max-width: 1200px) {
+  .dashboard-main {
+    grid-template-columns: 100%;
+  }
+
+  .offcanva {
+    left: -273px;
+  }
+
+  .offcanva.open {
+    left: 0px;
+  }
+}

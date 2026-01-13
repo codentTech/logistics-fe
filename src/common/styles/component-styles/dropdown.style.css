@@ -1,0 +1,86 @@
+.status_dropdown .MuiOutlinedInput-notchedOutline {
+  border: none;
+}
+.status_dropdown.open {
+  background: #f2f2f2;
+}
+
+.status_dropdown.accepted {
+  background: #f1ffb9;
+  color: #a58825;
+}
+.status_dropdown.accepted svg path {
+  fill: #a58825;
+}
+
+.status_dropdown.rejected {
+  background: #ffe8e8;
+  color: #a60a0a;
+}
+.status_dropdown.rejected svg path {
+  fill: #a60a0a;
+}
+
+.status_dropdown.invoiced {
+  background: #dcffde;
+  color: #0da60a;
+}
+.status_dropdown.invoiced svg path {
+  fill: #0da60a;
+}
+
+.status_dropdown.sent {
+  background: rgba(29, 78, 216, 0.1);
+  color: #1d4ed8;
+}
+.status_dropdown.sent svg path {
+  fill: #1d4ed8;
+}
+
+.status_dropdown.executed {
+  background: #f1ffb9;
+  color: #a58825;
+}
+.status_dropdown.executed svg path {
+  fill: #a58825;
+}
+
+.status_dropdown.delivered {
+  background: #dcffde;
+  color: #0da60a;
+}
+.status_dropdown.delivered svg path {
+  fill: #0da60a;
+}
+
+.status_dropdown.returned {
+  background: #f1ffb9;
+  color: #a58825;
+}
+.status_dropdown.returned svg path {
+  fill: #a58825;
+}
+
+.status_dropdown.overdue {
+  background: #f1ffb9;
+  color: #a58825;
+}
+.status_dropdown.overdue svg path {
+  fill: #a58825;
+}
+
+.status_dropdown.paid {
+  background: #dcffde;
+  color: #0da60a;
+}
+.status_dropdown.paid svg path {
+  fill: #0da60a;
+}
+
+.status_dropdown.cancelled {
+  background: #ffe8e8;
+  color: #a60a0a;
+}
+.status_dropdown.cancelled svg path {
+  fill: #a60a0a;
+}

@@ -1,0 +1,53 @@
+export const DOCUMENT_STATUS = Object.freeze({
+  OPEN: 'OPEN',
+  DRAFT: 'DRAFT',
+  INVOICED: 'INVOICED',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  SENT: 'SENT',
+  EXECUTED: 'EXECUTED',
+  PAID: 'PAID',
+  CANCELLED: 'CANCELLED',
+  RETURNED: 'RETURNED',
+  DELIVERED: 'DELIVERED'
+});
+
+export const OFFER_STATUS = Object.freeze({
+  OPEN: 'OPEN',
+  DRAFT: 'DRAFT',
+  INVOICED: 'INVOICED',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED'
+});
+
+export const CREDIT_NOTE_STATUS = Object.freeze({
+  OPEN: 'OPEN',
+  DRAFT: 'DRAFT',
+  PAID: 'PAID',
+  REJECTED: 'REJECTED'
+});
+
+export const ORDER_STATUS = Object.freeze({
+  OPEN: 'OPEN',
+  SENT: 'SENT',
+  DRAFT: 'DRAFT',
+  INVOICED: 'INVOICED',
+  REJECTED: 'REJECTED',
+  EXECUTED: 'EXECUTED'
+});
+
+export const INVOICE_STATUS = Object.freeze({
+  SENT: 'SENT',
+  OPEN: 'OPEN',
+  PAID: 'PAID',
+  DRAFT: 'DRAFT',
+  CANCELLED: 'CANCELLED'
+});
+
+export const DELIVERY_NOTES_STATUS = Object.freeze({
+  OPEN: 'OPEN',
+  DRAFT: 'DRAFT',
+  REJECTED: 'REJECTED',
+  RETURNED: 'RETURNED',
+  DELIVERED: 'DELIVERED'
+});

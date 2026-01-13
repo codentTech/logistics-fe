@@ -1,0 +1,31 @@
+html {
+    scroll-behavior: smooth;
+}
+
+.terms-and-conditions header{
+    background: linear-gradient(257deg, rgba(137, 118, 255, 0.41) 0.9%, rgba(193, 177, 255, 0.41) 36.45%, rgba(227, 233, 255, 0.41) 75.84%, rgba(203, 224, 255, 0.41) 100.4%);
+}
+
+.terms-and-conditions {
+    main article{
+        p {
+            color: #46474F;
+            padding-bottom: 10px;
+            line-height: 38px;
+        }
+        h4 {
+            padding-bottom: 16px;
+            padding-top: 32px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        a{
+            color: var(--color-primary);
+            text-decoration: underline;
+        }
+        ul{
+            list-style: disc;
+            padding-left: 2.5rem;
+        }
+    }
+}

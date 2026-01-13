@@ -1,0 +1,7 @@
+const CUSTOMER_TABS = Object.freeze({
+  DETAILS: 'DETAILS',
+  PAYMENT_DETAILS: 'PAYMENT_DETAILS',
+  DISCOUNT: 'DISCOUNT'
+});
+
+export default CUSTOMER_TABS;

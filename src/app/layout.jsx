@@ -42,16 +42,10 @@ function LayoutWrapper({ children }) {
     return () => clearTimeout(timeout);
   }, [pathname]);
 
-  return (
-    <>
-      {loading && <FullPageLoader />}
-      <React.Fragment>
-        {/* {!loading && <Header />} */}
-        <div className="bg-white">{children}</div>
-        {/* <div className="pt-52 lg:pt-40">{children}</div> */}
-        {/* {!loading && <Footer />} */}
-      </React.Fragment>
-    </>
+  return loading ? (
+    <FullPageLoader />
+  ) : (
+    <div className="bg-white">{children}</div>
   );
 }
 
@@ -73,7 +67,7 @@ export default function RootLayout({ children }) {
       <body>
         <StyledEngineProvider injectFirst>
           <SnackbarProvider
-            anchorOrigin={{ vertical: "top", horizontal: "center" }}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
             autoHideDuration={3000}
             maxSnack={2}
             Components={{

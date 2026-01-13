@@ -5,10 +5,16 @@ A modern, real-time logistics management frontend built with Next.js, React, and
 ## Features
 
 - **Real-time Driver Tracking**: Live location updates via Socket.IO and MQTT
+- **Driver Location Sharing**: Drivers can share their GPS location in real-time from web interface
+- **Route Simulation**: Automatic driver movement simulation from pickup to delivery (follows actual roads)
 - **Shipment Management**: Create, assign drivers, and track shipments through their lifecycle
 - **Dashboard**: Real-time overview of shipments, drivers, and delivery statistics
 - **Interactive Maps**: Leaflet-based maps showing driver locations in real-time
+- **Map-based Address Picker**: Select pickup and delivery addresses using interactive map
+- **Driver Filter**: Filter and focus on specific drivers on map view
+- **Sticky Navigation**: Fixed sidebar and navbar for better user experience
 - **Responsive Design**: Modern UI built with Tailwind CSS and custom components
+- **Custom UI Components**: Professional custom-built components (buttons, inputs, selects, modals)
 
 ## Tech Stack
 
@@ -68,25 +74,50 @@ The application will be available at `http://localhost:3000`.
 ```
 frontend/
 ├── src/
-│   ├── app/              # Next.js app router pages
-│   │   ├── dashboard/    # Dashboard page
-│   │   ├── drivers/      # Drivers list page
-│   │   ├── shipments/    # Shipments pages
-│   │   └── login/        # Login page
-│   ├── components/       # React components
-│   │   ├── dashboard/    # Dashboard components
-│   │   ├── drivers/      # Driver-related components
-│   │   ├── shipments/    # Shipment components
-│   │   └── login/        # Login components
-│   ├── common/           # Shared utilities and components
-│   │   ├── components/   # Reusable UI components
-│   │   ├── hooks/        # Custom React hooks
-│   │   ├── utils/        # Utility functions
-│   │   └── styles/       # Global styles
-│   └── provider/         # Redux store and slices
-│       ├── store.js      # Redux store configuration
-│       └── features/     # Feature-based Redux slices
-└── public/               # Static assets
+│   ├── app/                    # Next.js app router pages
+│   │   ├── dashboard/          # Dashboard page
+│   │   ├── drivers/            # Drivers list page
+│   │   ├── driver-location/    # Driver location sharing page
+│   │   ├── shipments/          # Shipments pages
+│   │   └── login/              # Login page
+│   ├── components/             # React components
+│   │   ├── dashboard/          # Dashboard components
+│   │   │   ├── dashboard.component.jsx
+│   │   │   └── create-shipment-modal.component.jsx
+│   │   ├── drivers/            # Driver-related components
+│   │   │   ├── drivers-list.component.jsx
+│   │   │   ├── drivers-map.component.jsx
+│   │   │   └── driver-location-share.component.jsx
+│   │   ├── shipments/          # Shipment components
+│   │   │   ├── shipments-list.component.jsx
+│   │   │   ├── shipment-details.component.jsx
+│   │   │   └── driver-location-map.component.jsx
+│   │   └── login/              # Login components
+│   ├── common/                 # Shared utilities and components
+│   │   ├── components/         # Reusable UI components
+│   │   │   ├── custom-button/
+│   │   │   ├── custom-input/
+│   │   │   ├── simple-select/
+│   │   │   ├── modal/
+│   │   │   ├── loader/
+│   │   │   ├── full-page-loader/
+│   │   │   └── dashboard/navbar/
+│   │   ├── hooks/              # Custom React hooks
+│   │   │   └── use-socket.hook.js
+│   │   ├── utils/              # Utility functions
+│   │   │   ├── api.js          # Axios instance with interceptors
+│   │   │   ├── access-token.util.js
+│   │   │   └── users.util.js
+│   │   └── styles/             # Global styles
+│   │       └── globals.style.css
+│   └── provider/               # Redux store and slices
+│       ├── store.js            # Redux store configuration
+│       └── features/           # Feature-based Redux slices
+│           ├── auth/
+│           ├── shipments/
+│           ├── drivers/
+│           └── dashboard/
+└── public/                     # Static assets
 ```
 
 ## Key Features
@@ -97,15 +128,34 @@ The frontend receives real-time driver location updates via Socket.IO:
 - Automatic connection management
 - Tenant-based room subscriptions
 - Redux state updates for live map rendering
+- Map markers update in real-time without page refresh
+- Location data stored in `drivers.locations` Redux state
+
+### Maps Integration
+
+- **Dashboard Map**: Shows all active drivers with locations
+- **Shipment Details Map**: Shows assigned driver's location with auto-centering
+- **Driver List Map**: Toggle between list and map view
+- **Address Picker**: Interactive map for selecting pickup and delivery addresses
+- Uses React-Leaflet with dynamic marker updates
+- Auto-centers on driver locations
+- Handles missing location data gracefully
+- Consistent zoom levels and precision across all maps
+- **Driver Filter Dropdown**: Filter and focus on specific drivers on map
+- **Real-time Route Simulation**: Watch drivers move along actual roads (OSRM routing)
 
 ### Custom Components
 
-All UI components are custom-built:
-- `CustomButton` - Button component with loading states
-- `CustomInput` - Input with validation and password visibility
-- `SimpleSelect` - Dropdown select component
-- `Modal` - Modal dialog component
+All UI components are custom-built (no Material-UI dependencies in UI):
+- `CustomButton` - Button component with loading states and variants
+- `CustomInput` - Input with validation, password visibility toggle, and proper styling
+- `SimpleSelect` - Dropdown select component with search
+- `Modal` - Modal dialog component for forms and confirmations
 - `Loader` - Circular loading spinner
+- `FullPageLoader` - Full-page loading indicator with ripple animation
+- `Navbar` - Navigation bar with breadcrumbs and user menu (sticky)
+- `AddressPicker` - Map-based address selection with geocoding
+- **Sticky Sidebar** - Fixed sidebar navigation for easy access
 
 ### State Management
 
@@ -129,20 +179,24 @@ The frontend uses JWT tokens stored in localStorage. The token is automatically 
 ## API Integration
 
 All API calls are made through a centralized Axios instance (`src/common/utils/api.js`) that:
-- Automatically adds authentication tokens
-- Handles error responses
-- Shows toast notifications for success/error
+- Automatically adds authentication tokens from localStorage
+- Handles error responses globally
+- Shows toast notifications for success/error (except location updates)
 - Redirects to login on 401 errors
+- Excludes location endpoint from success toasts (frequent updates)
+- Centralized error handling to prevent duplicate error messages
 
 ## Real-time Features
 
 ### Socket.IO Connection
 
 The `useSocket` hook manages the Socket.IO connection:
-- Single global connection instance
-- Automatic reconnection
-- Tenant room subscription
-- Real-time location and shipment updates
+- Single global connection instance (prevents multiple connections)
+- Automatic reconnection with exponential backoff
+- Tenant room subscription (`tenant:{tenantId}`)
+- Real-time location updates (`driver-location-update` event)
+- Real-time shipment status updates (`shipment-status-update` event)
+- Proper cleanup on component unmount
 
 ### Location Updates
 
@@ -151,6 +205,16 @@ Driver locations are updated in real-time:
 - Stored in Redux state
 - Automatically reflected on maps
 - No page refresh required
+
+### Route Simulation
+
+When a driver is assigned to a shipment:
+- System automatically simulates driver movement from pickup to delivery
+- Driver follows actual roads using OSRM routing (not straight lines)
+- Location updates every 3 seconds
+- Continues until driver reaches delivery location
+- Visible in real-time on all maps
+- See backend [Route Simulation Guide](../ROUTE_SIMULATION.md) for details
 
 ## Building for Production
 

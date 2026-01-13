@@ -37,15 +37,19 @@ export default function Modal({
   closeOnBackdropClick = true,
   showDivider = true,
 }) {
-  const { getModalSizeClasses, getModalHeightClasses, getHeaderClasses, handleBackdropClick } =
-    useModal({
-      size,
-      height,
-      customHeight,
-      variant,
-      onClose,
-      closeOnBackdropClick,
-    });
+  const {
+    getModalSizeClasses,
+    getModalHeightClasses,
+    getHeaderClasses,
+    handleBackdropClick,
+  } = useModal({
+    size,
+    height,
+    customHeight,
+    variant,
+    onClose,
+    closeOnBackdropClick,
+  });
 
   // Get modal container classes
   const getModalClasses = () => {
@@ -65,11 +69,12 @@ export default function Modal({
       PaperProps={{
         className: getModalClasses(),
         sx: {
-          borderRadius: "1.25rem", // rounded-card
-          boxShadow: "0px 10px 50px rgba(0, 0, 0, 0.15)", // modal shadow
+          borderRadius: "0.5rem",
+          boxShadow: "0px 10px 50px rgba(0, 0, 0, 0.15)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          margin: "auto",
         },
       }}
       BackdropProps={{
@@ -79,7 +84,6 @@ export default function Modal({
         },
       }}
     >
-      {/* Header */}
       <div className="flex items-center justify-between bg-primary-600 px-4 py-[14px]">
         <DialogTitle className="px-0 py-0 font-dm text-xl font-bold leading-8 text-white">
           {title}
@@ -91,23 +95,26 @@ export default function Modal({
         )}
       </div>
 
-      {/* Content */}
       <DialogContent
         dividers={showDivider && !!title}
         className="modal-content"
         sx={{
           position: "relative",
           overflowY: "auto",
+          overflowX: "hidden",
           flex: 1,
           padding: "1.5rem",
           minHeight: 0,
+          maxHeight: "85vh",
+          display: "flex",
+          flexDirection: "column",
           "&.MuiDialogContent-dividers": {
             borderTop: `1px solid var(--color-primary-200)`,
             borderBottom: "none",
           },
         }}
       >
-        <div className="modal-body">{children}</div>
+        <div className="modal-body w-full flex-1 flex flex-col">{children}</div>
       </DialogContent>
     </Dialog>
   );

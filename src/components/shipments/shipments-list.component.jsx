@@ -13,6 +13,7 @@ import {
 import CustomButton from "@/common/components/custom-button/custom-button.component";
 import Loader from "@/common/components/loader/loader.component";
 import CustomInput from "@/common/components/custom-input/custom-input.component";
+import AddressPicker from "@/common/components/address-picker/address-picker.component";
 import Modal from "@/common/components/modal/modal.component";
 import {
   formatShipmentStatus,
@@ -39,6 +40,8 @@ export default function ShipmentsList() {
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
+    setValue,
   } = useForm({
     resolver: yupResolver(validationSchema),
     mode: "onChange",
@@ -127,21 +130,21 @@ export default function ShipmentsList() {
       ) : (
         <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-indigo-600">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white">
                   Customer
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white">
                   Pickup
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white">
                   Delivery
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white">
                   Status
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-white">
                   Actions
                 </th>
               </tr>
@@ -184,57 +187,69 @@ export default function ShipmentsList() {
         </div>
       )}
 
-      {shipments.isError && (
-        <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-          {shipments.message || "Failed to load shipments"}
-        </div>
-      )}
-
       {/* Create Shipment Modal */}
       <Modal
         show={isCreateModalOpen}
         onClose={handleCloseModal}
         title="Create Shipment"
-        size="md"
+        size="lg"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <CustomInput
-            label="Customer Name"
-            name="customerName"
-            register={register}
-            errors={errors}
-            placeholder="Enter customer name"
-            isRequired={true}
-          />
+        <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                Customer Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CustomInput
+                  label="Customer Name"
+                  name="customerName"
+                  register={register}
+                  errors={errors}
+                  placeholder="Enter customer name"
+                  isRequired={true}
+                />
 
-          <CustomInput
-            label="Customer Phone"
-            name="customerPhone"
-            register={register}
-            errors={errors}
-            placeholder="+1234567890"
-            isRequired={true}
-          />
+                <CustomInput
+                  label="Customer Phone"
+                  name="customerPhone"
+                  register={register}
+                  errors={errors}
+                  placeholder="+1234567890"
+                  isRequired={true}
+                />
+              </div>
+            </div>
 
-          <CustomInput
-            label="Pickup Address"
-            name="pickupAddress"
-            register={register}
-            errors={errors}
-            placeholder="Enter pickup address"
-            isRequired={true}
-          />
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                Address Information
+              </h3>
+              <div className="space-y-4">
+                <AddressPicker
+                  label="Pickup Address"
+                  name="pickupAddress"
+                  value={watch("pickupAddress")}
+                  onChange={(value) => setValue("pickupAddress", value)}
+                  error={errors.pickupAddress?.message}
+                  placeholder="Search or click on map to select pickup location"
+                  required={true}
+                />
 
-          <CustomInput
-            label="Delivery Address"
-            name="deliveryAddress"
-            register={register}
-            errors={errors}
-            placeholder="Enter delivery address"
-            isRequired={true}
-          />
+                <AddressPicker
+                  label="Delivery Address"
+                  name="deliveryAddress"
+                  value={watch("deliveryAddress")}
+                  onChange={(value) => setValue("deliveryAddress", value)}
+                  error={errors.deliveryAddress?.message}
+                  placeholder="Search or click on map to select delivery location"
+                  required={true}
+                />
+              </div>
+            </div>
+          </div>
 
-          <div className="flex justify-end border-t gap-4 pt-4">
+          <div className="flex justify-end gap-3 border-t border-gray-200 mt-6 pt-4">
             <CustomButton
               type="button"
               text="Cancel"

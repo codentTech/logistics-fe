@@ -1,15 +1,18 @@
-import { Package } from "lucide-react";
-
 function FullPageLoader() {
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-16 h-16 bg-gradient-to-br from-primary-400 to-primary-500 rounded-xl flex items-center justify-center mx-auto mb-4 animate-pulse">
-          <Package className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-white flex items-center justify-center relative overflow-hidden">
+      {/* Ripple effect - like pebble in water */}
+      <div className="relative w-20 h-20">
+        {/* Center dot */}
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+          <div className="w-6 h-6 animate-pulse bg-indigo-600 rounded-full"></div>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Full Page Loader</h1>
-        <div className="w-36 h-2 bg-gray-200 rounded-full overflow-hidden">
-          <div className="w-full h-full bg-gradient-to-r from-primary-400 to-primary-500 rounded-full animate-pulse"></div>
+
+        {/* Expanding rings */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute w-20 h-20 border-2 border-indigo-300 rounded-full animate-ripple-1"></div>
+          <div className="absolute w-20 h-20 border-2 border-indigo-400 rounded-full animate-ripple-2"></div>
+          <div className="absolute w-20 h-20 border-2 border-indigo-500 rounded-full animate-ripple-3"></div>
         </div>
       </div>
     </div>

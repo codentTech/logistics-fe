@@ -1,11 +1,44 @@
 "use client";
 
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import { Icon } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import useSocket from "@/common/hooks/use-socket.hook";
+
+// Component to update map view when selectedDriverId changes
+function MapViewUpdater({ selectedDriverId, driversWithLocations, drivers }) {
+  const map = useMap();
+
+  useEffect(() => {
+    // Wait for map to be ready
+    if (!map || !map.getContainer()) {
+      return;
+    }
+
+    if (selectedDriverId) {
+      const selectedDriver = driversWithLocations.find(
+        (driver) => driver.id === selectedDriverId
+      );
+      if (selectedDriver) {
+        const location = drivers.locations[selectedDriver.id] || selectedDriver.location;
+        if (location && location.latitude && location.longitude && !isNaN(location.latitude) && !isNaN(location.longitude)) {
+          try {
+            map.setView([location.latitude, location.longitude], 15, {
+              animate: true,
+              duration: 0.5,
+            });
+          } catch (error) {
+            // Map might not be fully initialized yet
+          }
+        }
+      }
+    }
+  }, [selectedDriverId, driversWithLocations, drivers.locations, map]);
+
+  return null;
+}
 
 // Custom marker component that updates position when it changes
 function UpdatingMarker({ position, icon, children, driverId }) {
@@ -74,7 +107,8 @@ const createDriverIcon = (isActive) => {
   });
 };
 
-export default function DriversMap() {
+export default function DriversMap({ selectedDriverId = null }) {
+  const [isMounted, setIsMounted] = useState(false);
   const drivers = useSelector((state) => ({
     list: state.drivers?.list || [],
     locations: state.drivers?.locations || {},
@@ -82,6 +116,10 @@ export default function DriversMap() {
   }));
   
   useSocket();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const driversWithLocations = useMemo(() => {
     return drivers.list.filter((driver) => {
@@ -99,6 +137,20 @@ export default function DriversMap() {
   }, [drivers.list, drivers.locations]);
 
   const mapCenter = useMemo(() => {
+    // If a specific driver is selected, center on that driver
+    if (selectedDriverId) {
+      const selectedDriver = driversWithLocations.find(
+        (driver) => driver.id === selectedDriverId
+      );
+      if (selectedDriver) {
+        const location = drivers.locations[selectedDriver.id] || selectedDriver.location;
+        if (location && location.latitude && location.longitude) {
+          return [location.latitude, location.longitude];
+        }
+      }
+    }
+
+    // Otherwise, center on average of all drivers
     if (driversWithLocations.length === 0) {
       return [40.7128, -74.006];
     }
@@ -122,20 +174,36 @@ export default function DriversMap() {
       ) / driversWithLocations.length;
 
     return [avgLat, avgLng];
-  }, [driversWithLocations, drivers.locations]);
+  }, [selectedDriverId, driversWithLocations, drivers.locations]);
+
+  // Ensure we're in the browser and component is mounted
+  if (typeof window === "undefined" || !isMounted) {
+    return (
+      <div className="relative h-96 w-full overflow-hidden rounded-lg border border-gray-200 bg-white flex items-center justify-center">
+        <div className="text-sm text-gray-500">Loading map...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-96 w-full overflow-hidden rounded-lg border border-gray-200 bg-white">
       <MapContainer
         center={mapCenter}
-        zoom={driversWithLocations.length > 0 ? 12 : 10}
+        zoom={selectedDriverId ? 15 : (driversWithLocations.length > 0 ? 12 : 10)}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={true}
-        key={`map-${driversWithLocations.length}`}
+        whenReady={() => {
+          // Map is ready
+        }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <MapViewUpdater
+          selectedDriverId={selectedDriverId}
+          driversWithLocations={driversWithLocations}
+          drivers={drivers}
         />
         {driversWithLocations.length > 0 ? (
           driversWithLocations.map((driver) => {
@@ -144,12 +212,16 @@ export default function DriversMap() {
             return null;
           }
 
+          // Consider driver as active if they have location data (moving/online)
+          // This includes simulated movement from route simulation
+          const isDriverActive = driver.isActive || (location && location.timestamp);
+
           return (
             <UpdatingMarker
               key={driver.id}
               driverId={driver.id}
               position={[location.latitude, location.longitude]}
-              icon={createDriverIcon(driver.isActive)}
+              icon={createDriverIcon(isDriverActive)}
             >
               <Popup>
                 <div className="min-w-[200px]">
@@ -167,12 +239,12 @@ export default function DriversMap() {
                   <p className="mt-2 text-xs text-gray-500">
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                        driver.isActive
+                        isDriverActive
                           ? "bg-green-100 text-green-800"
                           : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {driver.isActive ? "ACTIVE" : "INACTIVE"}
+                      {isDriverActive ? "ACTIVE" : "INACTIVE"}
                     </span>
                   </p>
                   <p className="mt-1 text-xs text-gray-500">

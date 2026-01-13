@@ -227,14 +227,11 @@ export default function ShipmentDetails({ shipmentId }) {
                   loading={assignDriverState.isLoading}
                   disabled={!selectedDriverId || assignDriverState.isLoading}
                 />
-                {assignDriverState.isError && (
-                  <p className="text-xs text-red-600">{assignDriverState.message}</p>
-                )}
               </div>
             </div>
           )}
 
-          {shipment.status !== "DELIVERED" && (
+          {shipment.status !== "DELIVERED" && shipment.driverId && (
             <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
               <h3 className="mb-4 text-sm font-semibold text-gray-700">Update Status</h3>
               <div className="space-y-3">
@@ -253,9 +250,17 @@ export default function ShipmentDetails({ shipmentId }) {
                   loading={updateStatusState.isLoading}
                   disabled={!selectedStatus || updateStatusState.isLoading}
                 />
-                {updateStatusState.isError && (
-                  <p className="text-xs text-red-600">{updateStatusState.message}</p>
-                )}
+              </div>
+            </div>
+          )}
+
+          {shipment.status !== "DELIVERED" && !shipment.driverId && (
+            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="mb-4 text-sm font-semibold text-gray-700">Update Status</h3>
+              <div className="rounded-md bg-gray-50 p-4">
+                <p className="text-sm text-gray-600">
+                  Please assign a driver first before updating the shipment status.
+                </p>
               </div>
             </div>
           )}

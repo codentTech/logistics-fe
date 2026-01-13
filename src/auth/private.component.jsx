@@ -14,6 +14,7 @@ import { usePathname } from "next/navigation";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
 
 /**
  * Return the component if access token is verified and return to home page if its not
@@ -40,16 +41,17 @@ export default function Private({ component, title = NAVBAR_TITLE.DASHBOARD }) {
     { path: "/dashboard", label: "Dashboard", icon: DashboardIcon },
     { path: "/shipments", label: "Shipments", icon: LocalShippingIcon },
     { path: "/drivers", label: "Drivers", icon: DirectionsCarIcon },
+    { path: "/driver-location", label: "Share Location", icon: LocationOnIcon },
   ];
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div className="w-64 border-r border-gray-200 bg-white">
+      {/* Sidebar - Fixed/Sticky */}
+      <div className="fixed left-0 top-0 h-screen w-64 border-r border-gray-200 bg-white z-40 overflow-y-auto">
         <div className="p-6">
-          <h2 className="text-xl font-bold text-indigo-600">OpsCore</h2>
+          <h2 className="text-xl font-bold text-indigo-600 mb-1">OpsCore</h2>
         </div>
-        <nav className="px-4">
+        <nav className="px-4 border-t border-gray-200 pb-6">
           {navItems.map((item) => {
             const isActive = pathname === item.path;
             const IconComponent = item.icon;
@@ -57,7 +59,7 @@ export default function Private({ component, title = NAVBAR_TITLE.DASHBOARD }) {
               <Link
                 key={item.path}
                 href={item.path}
-                className={`mb-1 flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                className={`mb-1 mt-4 flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
                   isActive
                     ? "bg-indigo-50 text-indigo-600"
                     : "text-gray-700 hover:bg-gray-50"
@@ -72,8 +74,11 @@ export default function Private({ component, title = NAVBAR_TITLE.DASHBOARD }) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <Navbar title={title} />
+      <div className="flex-1 flex flex-col ml-64">
+        {/* Navbar - Sticky */}
+        <div className="sticky top-0 z-30">
+          <Navbar title={title} />
+        </div>
         <main className="flex-1 overflow-y-auto">{component}</main>
       </div>
     </div>

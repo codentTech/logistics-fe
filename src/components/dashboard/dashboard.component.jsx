@@ -1,18 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as Yup from "yup";
 import { getSummary } from "@/provider/features/dashboard/dashboard.slice";
-import { createShipment, getAllShipments } from "@/provider/features/shipments/shipments.slice";
+import {
+  createShipment,
+  getAllShipments,
+} from "@/provider/features/shipments/shipments.slice";
 import { getAllDrivers } from "@/provider/features/drivers/drivers.slice";
 import Loader from "@/common/components/loader/loader.component";
 import CustomButton from "@/common/components/custom-button/custom-button.component";
 import CustomInput from "@/common/components/custom-input/custom-input.component";
+import AddressPicker from "@/common/components/address-picker/address-picker.component";
 import Modal from "@/common/components/modal/modal.component";
+import SimpleSelect from "@/common/components/dropdowns/simple-select/simple-select";
 import useSocket from "@/common/hooks/use-socket.hook";
 import AddBoxIcon from "@mui/icons-material/AddBox";
 import ListAltIcon from "@mui/icons-material/ListAlt";
@@ -41,30 +46,100 @@ export default function Dashboard() {
   const dispatch = useDispatch();
   const { summary } = useSelector((state) => state.dashboard);
   const { create } = useSelector((state) => state.shipments);
+  const drivers = useSelector((state) => ({
+    list: state.drivers?.list || [],
+    locations: state.drivers?.locations || {},
+  }));
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  
+  const [selectedDriverId, setSelectedDriverId] = useState(null);
+
+  // Memoize online drivers and options to prevent dropdown from resetting
+  const { onlineDrivers, driverOptions } = useMemo(() => {
+    const onlineDrivers = drivers.list.filter((driver) => {
+      const location = drivers.locations[driver.id] || driver.location;
+      return (
+        location &&
+        location.latitude &&
+        location.longitude &&
+        location.latitude !== 0 &&
+        location.longitude !== 0 &&
+        !isNaN(location.latitude) &&
+        !isNaN(location.longitude)
+      );
+    });
+
+    const driverOptions = [
+      { value: null, label: "All Drivers" },
+      ...onlineDrivers.map((driver) => {
+        const driverName =
+          driver.name?.trim() ||
+          driver.user?.name?.trim() ||
+          `Driver ${driver.id?.slice(0, 8) || "Unknown"}`;
+        return {
+          value: driver.id,
+          label: driverName,
+        };
+      }),
+    ];
+
+    return { onlineDrivers, driverOptions };
+  }, [drivers.list, drivers.locations]);
+
+  // No need to memoize selectedOption - SimpleSelect expects the primitive value
+
   // Initialize Socket.IO for real-time location updates
-  useSocket();
+  const socket = useSocket();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
+    setValue,
   } = useForm({
     resolver: yupResolver(validationSchema),
     mode: "onChange",
   });
-  
+
   useEffect(() => {
     dispatch(getSummary());
     dispatch(getAllDrivers()); // Load drivers once on mount
-    // Refresh summary every 30 seconds (but not drivers - they update via Socket.IO)
+    // Refresh summary every 3 seconds for real-time updates
     const interval = setInterval(() => {
       dispatch(getSummary());
-    }, 30000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [dispatch]);
+
+  // Listen to driver location updates and refresh summary in real-time
+  useEffect(() => {
+    if (!socket) return;
+
+    let refreshTimeout = null;
+    const REFRESH_DELAY = 2000; // Throttle to refresh max once every 2 seconds
+
+    const handleDriverLocationUpdate = () => {
+      // Throttle summary refresh to avoid too many API calls
+      // Refresh summary when a driver location is updated
+      // This ensures driversOnline count updates in real-time
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+      refreshTimeout = setTimeout(() => {
+        dispatch(getSummary());
+      }, REFRESH_DELAY);
+    };
+
+    socket.on("driver-location-update", handleDriverLocationUpdate);
+
+    return () => {
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+      socket.off("driver-location-update", handleDriverLocationUpdate);
+    };
+  }, [socket, dispatch]);
 
   const handleCreateNew = () => {
     setIsCreateModalOpen(true);
@@ -181,13 +256,16 @@ export default function Dashboard() {
       </div>
 
       <div className="mb-6">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Quick Actions</h2>
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          Quick Actions
+        </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {quickActions.map((action, index) => {
             const IconComponent = action.icon;
-            const handleClick = action.link === "/shipments/create" 
-              ? handleCreateNew 
-              : () => router.push(action.link);
+            const handleClick =
+              action.link === "/shipments/create"
+                ? handleCreateNew
+                : () => router.push(action.link);
             return (
               <div
                 key={index}
@@ -197,7 +275,9 @@ export default function Dashboard() {
                 <div className="mb-3 text-indigo-600">
                   <IconComponent className="h-8 w-8" />
                 </div>
-                <h3 className="mb-1 text-base font-semibold text-gray-900">{action.title}</h3>
+                <h3 className="mb-1 text-base font-semibold text-gray-900">
+                  {action.title}
+                </h3>
                 <p className="text-sm text-gray-600">{action.description}</p>
               </div>
             );
@@ -209,78 +289,105 @@ export default function Dashboard() {
       <div className="mb-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Driver Locations</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Driver Locations
+            </h2>
             <p className="mt-1 text-sm text-gray-500">
               Real-time location tracking of all active drivers
             </p>
           </div>
-          <CustomButton
-            text="View All Drivers"
-            onClick={() => router.push("/drivers")}
-            variant="outline"
-            size="sm"
-          />
+          <div className="flex items-center gap-3">
+            {/* Driver Selection Dropdown */}
+            {onlineDrivers.length > 0 ? (
+              <div className="min-w-[300px]">
+                <SimpleSelect
+                  placeholder="All Drivers"
+                  options={driverOptions}
+                  value={selectedDriverId}
+                  onChange={(value) => {
+                    setSelectedDriverId(value || null);
+                  }}
+                  isSearchable={false}
+                  clearable={true}
+                  size="sm"
+                />
+              </div>
+            ) : null}
+            <CustomButton
+              text="View All Drivers"
+              onClick={() => router.push("/drivers")}
+              variant="outline"
+              size="sm"
+            />
+          </div>
         </div>
-        <DriversMap />
-      </div>
 
-      {summary.isError && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
-          {summary.message || "Failed to load dashboard data"}
-        </div>
-      )}
+        <DriversMap selectedDriverId={selectedDriverId} />
+      </div>
 
       {/* Create Shipment Modal */}
       <Modal
         show={isCreateModalOpen}
         onClose={handleCloseModal}
         title="Create Shipment"
-        size="md"
+        size="lg"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <CustomInput
-            label="Customer Name"
-            name="customerName"
-            register={register}
-            errors={errors}
-            placeholder="Enter customer name"
-            isRequired={true}
-          />
+        <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                Customer Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CustomInput
+                  label="Customer Name"
+                  name="customerName"
+                  register={register}
+                  errors={errors}
+                  placeholder="Enter customer name"
+                  isRequired={true}
+                />
 
-          <CustomInput
-            label="Customer Phone"
-            name="customerPhone"
-            register={register}
-            errors={errors}
-            placeholder="+1234567890"
-            isRequired={true}
-          />
-
-          <CustomInput
-            label="Pickup Address"
-            name="pickupAddress"
-            register={register}
-            errors={errors}
-            placeholder="Enter pickup address"
-            isRequired={true}
-          />
-
-          <CustomInput
-            label="Delivery Address"
-            name="deliveryAddress"
-            register={register}
-            errors={errors}
-            placeholder="Enter delivery address"
-            isRequired={true}
-          />
-
-          {create.isError && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-              {create.message || "Failed to create shipment"}
+                <CustomInput
+                  label="Customer Phone"
+                  name="customerPhone"
+                  register={register}
+                  errors={errors}
+                  placeholder="+1234567890"
+                  isRequired={true}
+                />
+              </div>
             </div>
-          )}
 
-          <div className="flex gap-4 pt-4">
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                Address Information
+              </h3>
+              <div className="space-y-4">
+                <AddressPicker
+                  label="Pickup Address"
+                  name="pickupAddress"
+                  value={watch("pickupAddress")}
+                  onChange={(value) => setValue("pickupAddress", value)}
+                  error={errors.pickupAddress?.message}
+                  placeholder="Search or click on map to select pickup location"
+                  required={true}
+                />
+
+                <AddressPicker
+                  label="Delivery Address"
+                  name="deliveryAddress"
+                  value={watch("deliveryAddress")}
+                  onChange={(value) => setValue("deliveryAddress", value)}
+                  error={errors.deliveryAddress?.message}
+                  placeholder="Search or click on map to select delivery location"
+                  required={true}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-gray-200 mt-6 pt-4">
             <CustomButton
               type="button"
               text="Cancel"
@@ -301,4 +408,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

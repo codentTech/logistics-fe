@@ -3,11 +3,9 @@
 import axios from "axios";
 import { enqueueSnackbar } from "notistack";
 import { getAccessToken } from "./access-token.util";
-import { delay } from "./generic.util";
 import { removeUser } from "./users.util";
-import { getSessionId } from "./session";
 
-const api = (headers = null) => {
+const api = (headers = {}) => {
   const accessToken = getAccessToken();
 
   const defaultHeaders = {
@@ -24,21 +22,6 @@ const api = (headers = null) => {
     headers: combinedHeaders,
   });
 
-  // Add request interceptor to set x-session-id ONLY for cart endpoints
-  apiInstance.interceptors.request.use((config) => {
-    if (!accessToken) {
-      // Only add x-session-id for cart endpoints
-      const isCartEndpoint = config.url && config.url.startsWith("/cart");
-      if (isCartEndpoint) {
-        const sessionId = getSessionId();
-        if (sessionId) {
-          config.headers["x-session-id"] = sessionId;
-        }
-      }
-    }
-    return config;
-  });
-
   apiInstance.interceptors.response.use(
     async (response) => {
       const method = response.config.method;
@@ -47,18 +30,17 @@ const api = (headers = null) => {
       const isLocationEndpoint =
         url.includes("/location") && url.includes("/drivers/");
 
+      // Don't show success toast for location updates (they happen frequently)
       const isSuccessResponse =
-        (method === "get" && endpoint === "generate-otp") ||
+        (method === "get" && endpoint === "location") ||
         (["post", "put", "delete"].includes(method) &&
           !["get", "get-all"].includes(endpoint) &&
-          !["/upload/single", "/upload/multiple"].includes(url) &&
           !isLocationEndpoint);
 
       if (isSuccessResponse) {
         enqueueSnackbar(response.data?.message || "Success", {
           variant: "success",
         });
-        await delay(700);
       }
 
       return response;

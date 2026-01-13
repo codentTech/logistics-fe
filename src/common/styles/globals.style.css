@@ -44,9 +44,25 @@
     -webkit-text-fill-color: theme("colors.text.primary") !important;
   }
 
-  /* Focus styles for accessibility - exclude buttons */
-  *:focus-visible:not(.btn):not(button) {
+  /* Focus styles for accessibility - exclude buttons and address picker inputs */
+  *:focus-visible:not(.btn):not(button):not(.address-picker-input input) {
     @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+  
+  /* Remove focus ring from address picker inputs */
+  .address-picker-input input:focus-visible {
+    @apply outline-none ring-0 ring-offset-0;
+  }
+  
+  /* Ensure Leaflet map containers display properly */
+  .leaflet-container {
+    height: 100% !important;
+    width: 100% !important;
+    z-index: 1;
+  }
+  
+  .leaflet-map-pane {
+    z-index: 1;
   }
   
   /* Buttons should have no focus ring */
@@ -416,7 +432,7 @@
   }
 
   .modal-content {
-    @apply bg-white rounded-lg shadow-xl max-w-md w-full max-h-screen overflow-y-auto;
+    @apply bg-white rounded-lg shadow-xl w-full max-h-screen overflow-y-auto;
   }
 
   .modal-header {
@@ -428,6 +444,8 @@
   }
 
   .modal-body {
+    width: 100% !important;
+    max-width: 100% !important;
     @apply px-6 py-4;
   }
 
@@ -506,6 +524,252 @@
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* Ripple animation for full page loader */
+@keyframes ripple {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+.animate-ripple-1 {
+  animation: ripple 2s ease-out infinite;
+}
+
+.animate-ripple-2 {
+  animation: ripple 2s ease-out infinite 0.4s;
+}
+
+.animate-ripple-3 {
+  animation: ripple 2s ease-out infinite 0.8s;
+}
+
+/* Slow spin animation for login page */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Slow bounce animation */
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* Float animation for particles */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-20px) translateX(10px);
+    opacity: 0.8;
+  }
+}
+
+@keyframes float-delayed {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(20px) translateX(-10px);
+    opacity: 0.8;
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(-15px) translateX(15px);
+    opacity: 0.7;
+  }
+}
+
+@keyframes float-slow-delayed {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(15px) translateX(-15px);
+    opacity: 0.7;
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 3s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 4s ease-in-out infinite 1s;
+}
+
+.animate-float-slow {
+  animation: float-slow 5s ease-in-out infinite;
+}
+
+.animate-float-slow-delayed {
+  animation: float-slow-delayed 5s ease-in-out infinite 1.5s;
+}
+
+/* Road animation - Trucks moving across lanes */
+/* Trucks moving from left to right */
+@keyframes truck-left-1 {
+  0% {
+    transform: translateX(-80px);
+  }
+  100% {
+    transform: translateX(2000px);
+  }
+}
+
+@keyframes truck-left-1-delayed {
+  0% {
+    transform: translateX(-80px);
+  }
+  100% {
+    transform: translateX(2000px);
+  }
+}
+
+@keyframes truck-left-2 {
+  0% {
+    transform: translateX(-100px);
+  }
+  100% {
+    transform: translateX(2000px);
+  }
+}
+
+@keyframes truck-left-2-delayed {
+  0% {
+    transform: translateX(-100px);
+  }
+  100% {
+    transform: translateX(2000px);
+  }
+}
+
+@keyframes truck-left-3 {
+  0% {
+    transform: translateX(-120px);
+  }
+  100% {
+    transform: translateX(2000px);
+  }
+}
+
+@keyframes truck-left-3-delayed {
+  0% {
+    transform: translateX(-120px);
+  }
+  100% {
+    transform: translateX(2000px);
+  }
+}
+
+/* Trucks moving from right to left (flipped) */
+@keyframes truck-right-1 {
+  0% {
+    transform: translateX(2000px) scaleX(-1);
+  }
+  100% {
+    transform: translateX(-80px) scaleX(-1);
+  }
+}
+
+@keyframes truck-right-1-delayed {
+  0% {
+    transform: translateX(2000px) scaleX(-1);
+  }
+  100% {
+    transform: translateX(-80px) scaleX(-1);
+  }
+}
+
+@keyframes truck-right-2 {
+  0% {
+    transform: translateX(2000px) scaleX(-1);
+  }
+  100% {
+    transform: translateX(-100px) scaleX(-1);
+  }
+}
+
+@keyframes truck-right-2-delayed {
+  0% {
+    transform: translateX(2000px) scaleX(-1);
+  }
+  100% {
+    transform: translateX(-100px) scaleX(-1);
+  }
+}
+
+.animate-truck-left-1 {
+  animation: truck-left-1 6s linear infinite;
+}
+
+.animate-truck-left-1-delayed {
+  animation: truck-left-1-delayed 6s linear infinite 3s;
+}
+
+.animate-truck-right-1 {
+  animation: truck-right-1 7s linear infinite;
+}
+
+.animate-truck-right-1-delayed {
+  animation: truck-right-1-delayed 7s linear infinite 3.5s;
+}
+
+.animate-truck-left-2 {
+  animation: truck-left-2 8s linear infinite;
+}
+
+.animate-truck-left-2-delayed {
+  animation: truck-left-2-delayed 8s linear infinite 4s;
+}
+
+.animate-truck-left-3 {
+  animation: truck-left-3 10s linear infinite;
+}
+
+.animate-truck-left-3-delayed {
+  animation: truck-left-3-delayed 10s linear infinite 5s;
+}
+
+.animate-truck-right-2 {
+  animation: truck-right-2 9s linear infinite;
+}
+
+.animate-truck-right-2-delayed {
+  animation: truck-right-2-delayed 9s linear infinite 4.5s;
 }
 
 /* Third-party component overrides (minimal and necessary only) */

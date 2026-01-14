@@ -83,7 +83,7 @@ export default function CustomInput({
   const getInputClasses = () => {
     // Base border and styling (no padding here - padding goes on Input component)
     const baseClasses =
-      "w-full border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-0 focus:ring-offset-0 focus:outline-none transition-colors duration-200";
+      "w-full border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-400 focus:outline-none transition-colors duration-200";
 
     // Size classes (only height and text size, no padding)
     const sizeClasses = {

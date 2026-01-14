@@ -16,27 +16,28 @@ const validationSchema = Yup.object().shape({
   password: Yup.string()
     .min(6, "Password must be at least 6 characters")
     .required("Password is required"),
-  tenantId: Yup.string()
-    .uuid("Tenant ID must be a valid UUID")
-    .required("Tenant ID is required"),
 });
 
 export default function useLogin() {
   const router = useRouter();
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
+  const [requiresTenantSelection, setRequiresTenantSelection] = useState(false);
+  const [tenants, setTenants] = useState([]);
+  const [selectedTenantId, setSelectedTenantId] = useState(null);
 
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
+    getValues,
   } = useForm({
     resolver: yupResolver(validationSchema),
     mode: "onChange",
   });
 
-  const { email, password, tenantId } = watch();
+  const { email, password } = watch();
 
   useEffect(() => {
     if (isLoginVerified()) {
@@ -52,11 +53,28 @@ export default function useLogin() {
     setLoading(true);
     try {
       const response = await dispatch(
-        login({ payload: { ...values }, successCallBack: moveRouter })
+        login({
+          payload: {
+            email: values.email,
+            password: values.password,
+            tenantId: selectedTenantId || undefined,
+          },
+          successCallBack: moveRouter,
+        })
       );
-      // If login was successful, loading will be handled by the slice
+
       if (login.fulfilled.match(response)) {
-        setLoading(false);
+        const result = response.payload;
+        
+        // Check if tenant selection is required
+        if (result.requiresTenantSelection && result.tenants) {
+          setRequiresTenantSelection(true);
+          setTenants(result.tenants);
+          setLoading(false);
+        } else {
+          // Direct login success
+          setLoading(false);
+        }
       } else if (login.rejected.match(response)) {
         setLoading(false);
         // Error will be shown via notistack from api.js
@@ -64,6 +82,35 @@ export default function useLogin() {
     } catch (error) {
       setLoading(false);
       // Error handling is done in api.js interceptor
+    }
+  };
+
+  const handleTenantSelect = async (tenantId) => {
+    setSelectedTenantId(tenantId);
+    setLoading(true);
+    
+    // Re-submit login with selected tenant
+    const values = getValues();
+    try {
+      const response = await dispatch(
+        login({
+          payload: {
+            email: values.email,
+            password: values.password,
+            tenantId: tenantId,
+          },
+          successCallBack: moveRouter,
+        })
+      );
+
+      if (login.fulfilled.match(response)) {
+        setLoading(false);
+        // Login successful, redirect will happen via callback
+      } else if (login.rejected.match(response)) {
+        setLoading(false);
+      }
+    } catch (error) {
+      setLoading(false);
     }
   };
 
@@ -75,6 +122,8 @@ export default function useLogin() {
     errors,
     password,
     email,
-    tenantId,
+    requiresTenantSelection,
+    tenants,
+    handleTenantSelect,
   };
 }

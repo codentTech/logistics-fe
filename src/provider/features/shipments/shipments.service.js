@@ -40,12 +40,37 @@ const updateStatus = async (shipmentId, status) => {
   return response.data;
 };
 
+// Cancel shipment by customer
+const cancelByCustomer = async (shipmentId) => {
+  const response = await api(getIdempotencyHeaders()).post(
+    `/v1/shipments/${shipmentId}/cancel-by-customer`
+  );
+  return response.data;
+};
+
+// Cancel shipment by driver
+const cancelByDriver = async (shipmentId) => {
+  const response = await api(getIdempotencyHeaders()).post(
+    `/v1/shipments/${shipmentId}/cancel-by-driver`
+  );
+  return response.data;
+};
+
+// Get shipment route data
+const getShipmentRoute = async (shipmentId) => {
+  const response = await api().get(`/v1/shipments/${shipmentId}/route`);
+  return response.data;
+};
+
 const shipmentsService = {
   createShipment,
   getAllShipments,
   getShipmentById,
   assignDriver,
   updateStatus,
+  cancelByCustomer,
+  cancelByDriver,
+  getShipmentRoute,
 };
 
 export default shipmentsService;

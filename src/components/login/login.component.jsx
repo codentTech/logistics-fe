@@ -14,7 +14,9 @@ export default function Login() {
     errors,
     email,
     password,
-    tenantId,
+    requiresTenantSelection,
+    tenants,
+    handleTenantSelect,
   } = useLogin();
 
   return (
@@ -156,31 +158,61 @@ export default function Login() {
                 isRequired={true}
               />
 
-              <CustomInput
-                label="Tenant ID"
-                name="tenantId"
-                register={register}
-                errors={errors}
-                placeholder="Enter Tenant UUID"
-                isRequired={true}
-              />
-
               <div className="pt-2">
                 <CustomButton
                   type="submit"
                   text="Sign in"
                   loading={loading}
                   className="btn-primary w-full"
-                  disabled={!email || !password || !tenantId || loading}
+                  disabled={!email || !password || loading}
                 />
               </div>
             </form>
+
+            {/* Tenant Selection */}
+            {requiresTenantSelection && tenants.length > 0 && (
+              <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-6">
+                <h3 className="mb-4 text-sm font-semibold text-gray-900">
+                  Select Organization
+                </h3>
+                <p className="mb-4 text-xs text-gray-600">
+                  Your email exists in multiple organizations. Please select which one you want to login to:
+                </p>
+                <div className="space-y-3">
+                  {tenants.map((tenant) => (
+                    <button
+                      key={tenant.id}
+                      type="button"
+                      onClick={() => handleTenantSelect(tenant.id)}
+                      disabled={loading}
+                      className="w-full rounded-lg border border-gray-300 bg-white p-4 text-left transition-all hover:border-indigo-500 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {tenant.name}
+                          </p>
+                          {tenant.slug && (
+                            <p className="mt-1 text-xs text-gray-500">
+                              {tenant.slug}
+                            </p>
+                          )}
+                        </div>
+                        {loading && selectedTenantId === tenant.id && (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"></div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Help Text */}
             <div className="mt-6 rounded-lg bg-indigo-50 p-4">
               <p className="text-xs text-indigo-800">
                 <strong>Need help?</strong> Contact your administrator for
-                tenant ID and account access.
+                account access.
               </p>
             </div>
           </div>

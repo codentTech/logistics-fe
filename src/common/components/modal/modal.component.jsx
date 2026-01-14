@@ -103,7 +103,7 @@ export default function Modal({
           overflowY: "auto",
           overflowX: "hidden",
           flex: 1,
-          padding: "1.5rem",
+          padding: "0.5rem",
           minHeight: 0,
           maxHeight: "85vh",
           display: "flex",

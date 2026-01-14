@@ -20,6 +20,8 @@ import {
   STATUS_COLORS,
 } from "@/common/utils/status.util";
 import { Search } from "lucide-react";
+import useRole from "@/common/hooks/use-role.hook";
+import ROLES from "@/common/constants/role.constant";
 
 const validationSchema = Yup.object().shape({
   pickupAddress: Yup.string().required("Pickup address is required"),
@@ -34,6 +36,7 @@ export default function ShipmentsList() {
   const { shipments, create } = useSelector((state) => state.shipments);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const { isAdmin } = useRole();
 
   const {
     register,
@@ -95,12 +98,14 @@ export default function ShipmentsList() {
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Shipments</h1>
-        <CustomButton
-          text="Create Shipment"
-          onClick={handleCreateNew}
-          variant="primary"
-          size="sm"
-        />
+        {isAdmin && (
+          <CustomButton
+            text="Create Shipment"
+            onClick={handleCreateNew}
+            variant="primary"
+            size="sm"
+          />
+        )}
       </div>
 
       <div className="mb-4 max-w-md">

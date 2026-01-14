@@ -107,7 +107,9 @@ export default function Navbar({ title }) {
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
               <User className="h-4 w-4" />
             </div>
-            <span className="hidden sm:block">{user?.email || "User"}</span>
+            <span className="hidden sm:block">
+              {user?.name || user?.email || "User"}
+            </span>
             <ChevronDown
               className={`h-4 w-4 text-gray-400 transition-transform ${
                 open ? "rotate-180" : ""
@@ -122,10 +124,17 @@ export default function Navbar({ title }) {
               className="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-lg border border-gray-200 bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
             >
               <div className="py-1">
-                <div className="border-b border-gray-100 px-4 py-3">
-                  <p className="text-sm font-medium text-gray-900">
-                    {user?.email || "User"}
-                  </p>
+                <div className="border-b border-gray-100 px-4 py-3 space-y-1">
+                  {user?.name && (
+                    <p className="text-sm font-medium text-gray-900">
+                      {user.name}
+                    </p>
+                  )}
+                  {user?.email && (
+                    <p className="text-xs text-gray-500">
+                      {user.email}
+                    </p>
+                  )}
                   {user?.role && (
                     <p className="text-xs text-gray-500 capitalize">
                       {user.role.replace("_", " ")}

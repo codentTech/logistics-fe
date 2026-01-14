@@ -18,6 +18,8 @@ const initialState = {
   create: generalState,
   assignDriver: generalState,
   updateStatus: generalState,
+  cancelByCustomer: generalState,
+  cancelByDriver: generalState,
 };
 
 // Get all shipments
@@ -124,6 +126,50 @@ export const updateStatus = createAsyncThunk(
   }
 );
 
+// Cancel by customer
+export const cancelByCustomer = createAsyncThunk(
+  'shipments/cancelByCustomer',
+  async ({ shipmentId, successCallBack }, thunkAPI) => {
+    try {
+      const response = await shipmentsService.cancelByCustomer(shipmentId);
+      if (response.success) {
+        if (successCallBack) {
+          successCallBack(response.data);
+        }
+        return response.data;
+      }
+      return thunkAPI.rejectWithValue(response);
+    } catch (error) {
+      return thunkAPI.rejectWithValue({
+        message: error.response?.data?.message || error.message,
+        error_code: error.response?.data?.error_code,
+      });
+    }
+  }
+);
+
+// Cancel by driver
+export const cancelByDriver = createAsyncThunk(
+  'shipments/cancelByDriver',
+  async ({ shipmentId, successCallBack }, thunkAPI) => {
+    try {
+      const response = await shipmentsService.cancelByDriver(shipmentId);
+      if (response.success) {
+        if (successCallBack) {
+          successCallBack(response.data);
+        }
+        return response.data;
+      }
+      return thunkAPI.rejectWithValue(response);
+    } catch (error) {
+      return thunkAPI.rejectWithValue({
+        message: error.response?.data?.message || error.message,
+        error_code: error.response?.data?.error_code,
+      });
+    }
+  }
+);
+
 export const shipmentsSlice = createSlice({
   name: 'shipments',
   initialState,
@@ -132,6 +178,8 @@ export const shipmentsSlice = createSlice({
       state.create = generalState;
       state.assignDriver = generalState;
       state.updateStatus = generalState;
+      state.cancelByCustomer = generalState;
+      state.cancelByDriver = generalState;
     },
     setCurrentShipment: (state, action) => {
       state.shipments.current = action.payload;
@@ -241,6 +289,56 @@ export const shipmentsSlice = createSlice({
         state.updateStatus.isLoading = false;
         state.updateStatus.isError = true;
         state.updateStatus.message = action.payload?.message || 'Failed to update status';
+      })
+      // Cancel by customer
+      .addCase(cancelByCustomer.pending, (state) => {
+        state.cancelByCustomer.isLoading = true;
+        state.cancelByCustomer.isError = false;
+        state.cancelByCustomer.message = '';
+      })
+      .addCase(cancelByCustomer.fulfilled, (state, action) => {
+        state.cancelByCustomer.isLoading = false;
+        state.cancelByCustomer.isSuccess = true;
+        state.cancelByCustomer.data = action.payload;
+        // Update in list
+        const index = state.shipments.list.findIndex((s) => s.id === action.payload.id);
+        if (index !== -1) {
+          state.shipments.list[index] = action.payload;
+        }
+        // Update current if it's the same shipment
+        if (state.shipments.current?.id === action.payload.id) {
+          state.shipments.current = action.payload;
+        }
+      })
+      .addCase(cancelByCustomer.rejected, (state, action) => {
+        state.cancelByCustomer.isLoading = false;
+        state.cancelByCustomer.isError = true;
+        state.cancelByCustomer.message = action.payload?.message || 'Failed to cancel shipment';
+      })
+      // Cancel by driver
+      .addCase(cancelByDriver.pending, (state) => {
+        state.cancelByDriver.isLoading = true;
+        state.cancelByDriver.isError = false;
+        state.cancelByDriver.message = '';
+      })
+      .addCase(cancelByDriver.fulfilled, (state, action) => {
+        state.cancelByDriver.isLoading = false;
+        state.cancelByDriver.isSuccess = true;
+        state.cancelByDriver.data = action.payload;
+        // Update in list
+        const index = state.shipments.list.findIndex((s) => s.id === action.payload.id);
+        if (index !== -1) {
+          state.shipments.list[index] = action.payload;
+        }
+        // Update current if it's the same shipment
+        if (state.shipments.current?.id === action.payload.id) {
+          state.shipments.current = action.payload;
+        }
+      })
+      .addCase(cancelByDriver.rejected, (state, action) => {
+        state.cancelByDriver.isLoading = false;
+        state.cancelByDriver.isError = true;
+        state.cancelByDriver.message = action.payload?.message || 'Failed to cancel shipment';
       });
   },
 });

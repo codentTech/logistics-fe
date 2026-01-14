@@ -26,12 +26,24 @@ export const login = createAsyncThunk(
   async ({ payload, successCallBack }, thunkAPI) => {
     try {
       const response = await authService.login(payload);
+      
+      // If tenant selection is required, return the full response
+      if (response.success && response.requiresTenantSelection) {
+        return {
+          requiresTenantSelection: true,
+          tenants: response.tenants,
+          message: response.message,
+        };
+      }
+      
+      // If login is successful with token
       if (response.success && response.token) {
         if (successCallBack) {
           successCallBack(response.user);
         }
         return { user: response.user, token: response.token };
       }
+      
       return thunkAPI.rejectWithValue({
         message: response.message || 'Login failed',
         error_code: response.error_code,

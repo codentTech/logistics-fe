@@ -12,16 +12,35 @@ export default function useNavbar() {
     // Get user from auth state (OpsCore format)
     const authUser = state.auth?.login?.data;
     if (authUser) {
+      const userData = authUser.user || authUser;
+      const firstName = userData.firstName || "";
+      const lastName = userData.lastName || "";
+      const fullName = [firstName, lastName].filter(Boolean).join(" ") || null;
+      
       return {
-        email: authUser.user?.email || authUser.email,
-        role: authUser.user?.role || authUser.role,
+        email: userData.email || authUser.email,
+        role: userData.role || authUser.role,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        name: fullName,
       };
     }
+    
     // Fallback: try to get from localStorage
     if (typeof window !== "undefined") {
       try {
         const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-        return { email: storedUser.email, role: storedUser.role };
+        const firstName = storedUser.firstName || "";
+        const lastName = storedUser.lastName || "";
+        const fullName = [firstName, lastName].filter(Boolean).join(" ") || null;
+        
+        return { 
+          email: storedUser.email, 
+          role: storedUser.role,
+          firstName: firstName || null,
+          lastName: lastName || null,
+          name: fullName,
+        };
       } catch {
         return null;
       }

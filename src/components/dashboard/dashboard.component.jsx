@@ -19,13 +19,15 @@ import AddressPicker from "@/common/components/address-picker/address-picker.com
 import Modal from "@/common/components/modal/modal.component";
 import SimpleSelect from "@/common/components/dropdowns/simple-select/simple-select";
 import useSocket from "@/common/hooks/use-socket.hook";
+import useRole from "@/common/hooks/use-role.hook";
+import ROLES from "@/common/constants/role.constant";
 import AddBoxIcon from "@mui/icons-material/AddBox";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import dynamic from "next/dynamic";
 
-// Dynamically import map component (SSR disabled for Leaflet)
-const DriversMap = dynamic(() => import("../drivers/drivers-map.component"), {
+// Dynamically import enhanced map component (SSR disabled for Leaflet)
+const DriversMap = dynamic(() => import("../drivers/enhanced-drivers-map.component"), {
   ssr: false,
   loading: () => (
     <div className="flex h-96 items-center justify-center rounded-lg border border-gray-200 bg-white">
@@ -52,6 +54,7 @@ export default function Dashboard() {
   }));
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState(null);
+  const { isAdmin, isDriver, isCustomer } = useRole();
 
   // Memoize online drivers and options to prevent dropdown from resetting
   const { onlineDrivers, driverOptions } = useMemo(() => {
@@ -105,6 +108,7 @@ export default function Dashboard() {
   useEffect(() => {
     dispatch(getSummary());
     dispatch(getAllDrivers()); // Load drivers once on mount
+    dispatch(getAllShipments()); // Load shipments for route data
     // Refresh summary every 3 seconds for real-time updates
     const interval = setInterval(() => {
       dispatch(getSummary());
@@ -141,6 +145,79 @@ export default function Dashboard() {
     };
   }, [socket, dispatch]);
 
+  // Get data (use default values if loading)
+  const data = summary.data || {
+    totalShipments: 0,
+    activeShipments: 0,
+    deliveredToday: 0,
+    driversOnline: 0,
+  };
+
+  // Role-based dashboard cards - MUST be before any early returns
+  const allCards = [
+    {
+      title: "Total Shipments",
+      value: data.totalShipments || 0,
+      link: "/shipments",
+      roles: [ROLES.OPS_ADMIN, ROLES.DRIVER, ROLES.CUSTOMER],
+    },
+    {
+      title: "Active Shipments",
+      value: data.activeShipments || 0,
+      link: "/shipments",
+      roles: [ROLES.OPS_ADMIN, ROLES.DRIVER, ROLES.CUSTOMER],
+    },
+    {
+      title: "Delivered Today",
+      value: data.deliveredToday || 0,
+      link: "/shipments",
+      roles: [ROLES.OPS_ADMIN, ROLES.DRIVER, ROLES.CUSTOMER],
+    },
+    {
+      title: "Drivers Online",
+      value: data.driversOnline || 0,
+      link: "/drivers",
+      roles: [ROLES.OPS_ADMIN], // Admin only
+    },
+  ];
+
+  const cards = useMemo(() => {
+    if (!isAdmin && !isDriver && !isCustomer) return [];
+    const userRole = isAdmin ? ROLES.OPS_ADMIN : isDriver ? ROLES.DRIVER : ROLES.CUSTOMER;
+    return allCards.filter((card) => card.roles.includes(userRole));
+  }, [isAdmin, isDriver, isCustomer, data.totalShipments, data.activeShipments, data.deliveredToday, data.driversOnline]);
+
+  // Role-based quick actions - MUST be before any early returns
+  const allQuickActions = [
+    {
+      title: "Create Shipment",
+      description: "Create a new shipment",
+      link: "/shipments/create",
+      icon: AddBoxIcon,
+      roles: [ROLES.OPS_ADMIN], // Admin only
+    },
+    {
+      title: "View Shipments",
+      description: "Manage all shipments",
+      link: "/shipments",
+      icon: ListAltIcon,
+      roles: [ROLES.OPS_ADMIN, ROLES.DRIVER, ROLES.CUSTOMER], // All roles
+    },
+    {
+      title: "View Drivers",
+      description: "Manage drivers",
+      link: "/drivers",
+      icon: DirectionsCarIcon,
+      roles: [ROLES.OPS_ADMIN], // Admin only
+    },
+  ];
+
+  const quickActions = useMemo(() => {
+    if (!isAdmin && !isDriver && !isCustomer) return [];
+    const userRole = isAdmin ? ROLES.OPS_ADMIN : isDriver ? ROLES.DRIVER : ROLES.CUSTOMER;
+    return allQuickActions.filter((action) => action.roles.includes(userRole));
+  }, [isAdmin, isDriver, isCustomer]);
+
   const handleCreateNew = () => {
     setIsCreateModalOpen(true);
   };
@@ -169,6 +246,7 @@ export default function Dashboard() {
 
   // Only show loader on initial load (when there's no data yet)
   // Don't show loader on subsequent refreshes to avoid blocking UI
+  // IMPORTANT: This early return must be AFTER all hooks
   if (summary.isLoading && !summary.data) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -177,67 +255,18 @@ export default function Dashboard() {
     );
   }
 
-  const data = summary.data || {
-    totalShipments: 0,
-    activeShipments: 0,
-    deliveredToday: 0,
-    driversOnline: 0,
-  };
-
-  const cards = [
-    {
-      title: "Total Shipments",
-      value: data.totalShipments || 0,
-      link: "/shipments",
-    },
-    {
-      title: "Active Shipments",
-      value: data.activeShipments || 0,
-      link: "/shipments",
-    },
-    {
-      title: "Delivered Today",
-      value: data.deliveredToday || 0,
-      link: "/shipments",
-    },
-    {
-      title: "Drivers Online",
-      value: data.driversOnline || 0,
-      link: "/drivers",
-    },
-  ];
-
-  const quickActions = [
-    {
-      title: "Create Shipment",
-      description: "Create a new shipment",
-      link: "/shipments/create",
-      icon: AddBoxIcon,
-    },
-    {
-      title: "View Shipments",
-      description: "Manage all shipments",
-      link: "/shipments",
-      icon: ListAltIcon,
-    },
-    {
-      title: "View Drivers",
-      description: "Manage drivers",
-      link: "/drivers",
-      icon: DirectionsCarIcon,
-    },
-  ];
-
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-        <CustomButton
-          text="Create Shipment"
-          onClick={handleCreateNew}
-          variant="primary"
-          size="sm"
-        />
+        {isAdmin && (
+          <CustomButton
+            text="Create Shipment"
+            onClick={handleCreateNew}
+            variant="primary"
+            size="sm"
+          />
+        )}
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -322,7 +351,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <DriversMap selectedDriverId={selectedDriverId} />
+        <DriversMap 
+          selectedDriverId={selectedDriverId} 
+          showOnlyDriverId={selectedDriverId}
+        />
       </div>
 
       {/* Create Shipment Modal */}

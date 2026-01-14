@@ -5,6 +5,13 @@ import { removeUser } from '@/common/utils/users.util';
 const login = async (loginPayload) => {
   try {
     const response = await api().post('/v1/auth/login', loginPayload);
+    
+    // If tenant selection is required, return the response as-is
+    if (response.data.success && response.data.requiresTenantSelection) {
+      return response.data;
+    }
+    
+    // If login is successful with token, store user data
     if (response.data.success && response.data.token) {
       // Store user data with token in OpsCore format
       const userData = {
@@ -12,10 +19,13 @@ const login = async (loginPayload) => {
         email: response.data.user.email,
         role: response.data.user.role,
         tenantId: response.data.user.tenantId,
+        firstName: response.data.user.firstName,
+        lastName: response.data.user.lastName,
         token: response.data.token,
       };
       localStorage.setItem('user', JSON.stringify(userData));
     }
+    
     return response.data;
   } catch (error) {
     // Re-throw to let the slice handle it

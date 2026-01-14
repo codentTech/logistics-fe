@@ -10,8 +10,8 @@ import useSocket from "@/common/hooks/use-socket.hook";
 import { List, Map as MapIcon } from "lucide-react";
 import CustomButton from "@/common/components/custom-button/custom-button.component";
 
-// Dynamically import map component (SSR disabled for Leaflet)
-const DriversMap = dynamic(() => import("./drivers-map.component"), {
+// Dynamically import enhanced map component (SSR disabled for Leaflet)
+const DriversMap = dynamic(() => import("./enhanced-drivers-map.component"), {
   ssr: false,
   loading: () => (
     <div className="flex h-96 items-center justify-center rounded-lg border border-gray-200 bg-white">

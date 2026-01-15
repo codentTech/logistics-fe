@@ -26,6 +26,9 @@ import {
   STATUS_COLORS,
 } from "@/common/utils/status.util";
 import useSocket from "@/common/hooks/use-socket.hook";
+import driversService from "@/provider/features/drivers/drivers.service";
+import { MapPin, XCircle } from "lucide-react";
+import { refreshConfig } from "@/common/config/refresh.config";
 
 // Dynamically import enhanced map component (SSR disabled for Leaflet)
 const EnhancedDriversMap = dynamic(
@@ -71,10 +74,54 @@ export default function ShipmentDetails({ shipmentId }) {
   const refreshTimeoutRef = useRef(null); // For debouncing API calls
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
+  // Location sharing state
+  const [isSharingLocation, setIsSharingLocation] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [locationError, setLocationError] = useState(null);
+  const [lastLocationUpdate, setLastLocationUpdate] = useState(null);
+  const [isLocationShared, setIsLocationShared] = useState(false);
+  const watchIdRef = useRef(null);
+  const locationIntervalRef = useRef(null);
+  const currentLocationRef = useRef(null);
+
   // Get current user role
   const { role: userRole, isAdmin } = useRole();
 
   const socket = useSocket();
+
+  // Get user info for location sharing
+  const user = useSelector((state) => {
+    const authUser = state.auth?.login?.data;
+    if (authUser) {
+      const userId = authUser.user?.id || authUser.id;
+      const token = authUser.token || authUser.user?.token;
+      if (userId && token) {
+        return { id: userId, token };
+      }
+    }
+    if (typeof window !== "undefined") {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        if (storedUser.id && storedUser.token) {
+          return { id: storedUser.id, token: storedUser.token };
+        }
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  // Find driver ID from user ID
+  const driverId = useMemo(() => {
+    if (user?.id && drivers.list.length > 0) {
+      const driver = drivers.list.find(
+        (d) => d.userId === user.id || d.user?.id === user.id
+      );
+      return driver?.id || null;
+    }
+    return null;
+  }, [user?.id, drivers.list]);
 
   useEffect(() => {
     setIsInitialLoad(true);
@@ -150,6 +197,281 @@ export default function ShipmentDetails({ shipmentId }) {
       }
     };
   }, [socket, shipmentId, dispatch]);
+
+  // Send location to backend
+  const sendLocation = async (location) => {
+    if (!driverId || !user?.token) {
+      setLocationError("Driver not found. Please contact admin.");
+      setIsSharingLocation(false);
+      return;
+    }
+
+    if (
+      typeof location.latitude !== "number" ||
+      typeof location.longitude !== "number" ||
+      isNaN(location.latitude) ||
+      isNaN(location.longitude) ||
+      location.latitude < -90 ||
+      location.latitude > 90 ||
+      location.longitude < -180 ||
+      location.longitude > 180
+    ) {
+      setLocationError(
+        "Invalid location coordinates. Please check GPS signal."
+      );
+      return;
+    }
+
+    try {
+      const response = await driversService.updateLocation(driverId, {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        timestamp: location.timestamp,
+      });
+
+      if (response && response.success) {
+        setLastLocationUpdate(new Date());
+        setIsLocationShared(true);
+        if (
+          locationError &&
+          (locationError.includes("Warning:") ||
+            locationError.includes("Failed"))
+        ) {
+          setLocationError(null);
+        }
+      } else {
+        const errorMsg = response?.message || "Failed to send location";
+        if (!locationError || !locationError.includes(errorMsg)) {
+          setLocationError(
+            `Warning: ${errorMsg}. Location tracking continues...`
+          );
+        }
+      }
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message || err.message || "Failed to send location";
+      const status = err.response?.status;
+
+      if (status === 401) {
+        setLocationError(
+          `Authentication failed: ${errorMessage}. Please login again.`
+        );
+        setIsSharingLocation(false);
+      } else if (status === 404) {
+        setLocationError(`Driver not found: ${errorMessage}`);
+        setIsSharingLocation(false);
+      } else if (status === 400) {
+        setLocationError(`Invalid location data: ${errorMessage}`);
+      } else {
+        if (!locationError || !locationError.includes("Warning:")) {
+          setLocationError(
+            `Warning: ${errorMessage}. Location tracking continues...`
+          );
+        }
+      }
+    }
+  };
+
+  // Start location sharing
+  const startLocationSharing = () => {
+    if (!driverId) {
+      setLocationError("Driver profile not found. Please contact admin.");
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsSharingLocation(true);
+    setLocationError(null);
+
+    // Get initial location
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          timestamp: new Date().toISOString(),
+        };
+        setCurrentLocation(location);
+        currentLocationRef.current = location;
+        sendLocation(location).catch(() => {});
+      },
+      (err) => {
+        setLocationError(
+          `Error getting location: ${err.message}. Please check browser permissions.`
+        );
+        setIsSharingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+
+    // Watch position for updates
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const location = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          timestamp: new Date().toISOString(),
+        };
+        setCurrentLocation(location);
+        currentLocationRef.current = location;
+      },
+      (err) => {
+        if (err.code === 1) {
+          setLocationError(
+            `Permission denied: ${err.message}. Please allow location access in browser settings.`
+          );
+          setIsSharingLocation(false);
+        } else if (err.code === 3) {
+          setLocationError(`Timeout: ${err.message}. Retrying...`);
+        } else {
+          setLocationError(`Location warning: ${err.message}. Retrying...`);
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 5000,
+      }
+    );
+
+    watchIdRef.current = watchId;
+
+    // Send location at configured interval
+    const sendLocationInterval = setInterval(() => {
+      const location = currentLocationRef.current;
+      if (location) {
+        sendLocation(location).catch(() => {});
+      } else {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const freshLocation = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              timestamp: new Date().toISOString(),
+            };
+            setCurrentLocation(freshLocation);
+            currentLocationRef.current = freshLocation;
+            sendLocation(freshLocation).catch(() => {});
+          },
+          (err) => {
+            if (err.code === 1) {
+              setLocationError(
+                `Permission denied: ${err.message}. Please allow location access in browser settings.`
+              );
+              setIsSharingLocation(false);
+            }
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          }
+        );
+      }
+    }, refreshConfig.driverLocationShareInterval);
+
+    locationIntervalRef.current = sendLocationInterval;
+  };
+
+  // Stop location sharing
+  const stopLocationSharing = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    if (locationIntervalRef.current !== null) {
+      clearInterval(locationIntervalRef.current);
+      locationIntervalRef.current = null;
+    }
+    setIsSharingLocation(false);
+    setCurrentLocation(null);
+    currentLocationRef.current = null;
+    setLastLocationUpdate(null);
+    setIsLocationShared(false);
+  };
+
+  // Check if location is shared (listen to socket updates and verify on load)
+  useEffect(() => {
+    if (!socket || !driverId) return;
+
+    const handleLocationUpdate = (payload) => {
+      if (payload && payload.driverId === driverId) {
+        setIsLocationShared(true);
+        setLastLocationUpdate(new Date(payload.location.timestamp));
+      }
+    };
+
+    socket.on("driver-location-update", handleLocationUpdate);
+
+    // Also check if location was already shared (for page refresh scenarios)
+    // We can infer location is shared if we're currently sharing
+    if (isSharingLocation) {
+      setIsLocationShared(true);
+    }
+
+    return () => {
+      socket.off("driver-location-update", handleLocationUpdate);
+    };
+  }, [socket, driverId, isSharingLocation]);
+
+  // Persist location sharing until delivery
+  useEffect(() => {
+    const shipment = currentShipment || shipments.current;
+    if (!shipment || !driverId || userRole !== "driver") return;
+
+    // If shipment is delivered or cancelled, stop location sharing
+    if (
+      shipment.status === "DELIVERED" ||
+      shipment.status === "CANCEL_BY_CUSTOMER" ||
+      shipment.status === "CANCEL_BY_DRIVER"
+    ) {
+      if (isSharingLocation) {
+        stopLocationSharing();
+      }
+      return;
+    }
+
+    // Keep location sharing active for APPROVED and IN_TRANSIT statuses
+    // Location sharing should continue until delivery
+    if (
+      shipment.driverId === driverId &&
+      (shipment.status === "APPROVED" || shipment.status === "IN_TRANSIT") &&
+      !isSharingLocation
+    ) {
+      // Restart location sharing if it stopped but shipment is still active
+      const timer = setTimeout(() => {
+        startLocationSharing();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    currentShipment?.id,
+    currentShipment?.driverId,
+    currentShipment?.status,
+    driverId,
+    userRole,
+    isSharingLocation,
+  ]);
+
+  // Cleanup location watchers on unmount
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      if (locationIntervalRef.current !== null) {
+        clearInterval(locationIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Use the specific selector to ensure re-renders on updates
   const shipment = currentShipment || shipments.current;
@@ -485,6 +807,101 @@ export default function ShipmentDetails({ shipmentId }) {
                   You have been assigned to this shipment. Please review and
                   approve or reject the assignment within 5 minutes.
                 </p>
+                {/* Location Sharing Section */}
+                <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5 text-indigo-600" />
+                      <h4 className="text-sm font-semibold text-gray-900">
+                        Share Location
+                      </h4>
+                    </div>
+                    {isSharingLocation && (
+                      <div className="flex items-center gap-2 rounded-full bg-green-100 px-3 py-1">
+                        <div className="h-2 w-2 animate-pulse rounded-full bg-green-600"></div>
+                        <span className="text-xs font-medium text-green-800">
+                          Sharing
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {!isSharingLocation ? (
+                    <div className="space-y-3">
+                      <p className="text-xs text-gray-600">
+                        You must share your location before approving the
+                        shipment.
+                      </p>
+                      <CustomButton
+                        text="Start Sharing Location"
+                        onClick={startLocationSharing}
+                        variant="primary"
+                        size="sm"
+                        startIcon={<MapPin className="h-4 w-4" />}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {currentLocation && (
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <span className="text-gray-600">Latitude:</span>
+                              <span className="ml-2 font-mono text-gray-900">
+                                {currentLocation.latitude.toFixed(6)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Longitude:</span>
+                              <span className="ml-2 font-mono text-gray-900">
+                                {currentLocation.longitude.toFixed(6)}
+                              </span>
+                            </div>
+                            {lastLocationUpdate && (
+                              <div className="col-span-2">
+                                <span className="text-gray-600">
+                                  Last Sent:
+                                </span>
+                                <span className="ml-2 text-gray-900">
+                                  {new Date(
+                                    lastLocationUpdate
+                                  ).toLocaleTimeString()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {locationError && (
+                        <div
+                          className={`rounded-lg p-2 text-xs ${
+                            locationError.includes("Warning:") ||
+                            locationError.includes("Retrying")
+                              ? "bg-yellow-50 text-yellow-800"
+                              : "bg-red-50 text-red-800"
+                          }`}
+                        >
+                          {locationError}
+                        </div>
+                      )}
+                      <CustomButton
+                        text="Stop Sharing"
+                        onClick={stopLocationSharing}
+                        variant="outline"
+                        size="sm"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {approveAssignmentState.isError &&
+                  approveAssignmentState.message && (
+                    <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                      <p className="text-sm text-red-800">
+                        {approveAssignmentState.message}
+                      </p>
+                    </div>
+                  )}
                 <div className="flex gap-3">
                   <CustomButton
                     text="Approve"
@@ -501,7 +918,9 @@ export default function ShipmentDetails({ shipmentId }) {
                     variant="primary"
                     size="sm"
                     loading={approveAssignmentState.isLoading}
-                    disabled={approveAssignmentState.isLoading}
+                    disabled={
+                      approveAssignmentState.isLoading || !isLocationShared
+                    }
                   />
                   <CustomButton
                     text="Reject"

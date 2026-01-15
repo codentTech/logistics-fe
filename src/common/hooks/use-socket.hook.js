@@ -95,6 +95,14 @@ export default function useSocket() {
 
     socket.on("driver-location-update", (payload) => {
       if (payload && payload.driverId && payload.location) {
+        // Directly dispatch to Redux to ensure location updates are always processed
+        dispatch(
+          updateDriverLocation({
+            driverId: payload.driverId,
+            location: payload.location,
+          })
+        );
+        // Also call callback if it exists (for backward compatibility)
         if (locationUpdateCallback) {
           locationUpdateCallback(payload);
         }

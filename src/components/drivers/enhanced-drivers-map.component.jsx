@@ -264,7 +264,7 @@ export default function EnhancedDriversMap({ selectedDriverId = null, showOnlyDr
   // Fetch route data for drivers with active shipments
   // Phase 1 (TO_PICKUP): When status is APPROVED - Driver location → Pickup
   // Phase 2 (TO_DELIVERY): When status is IN_TRANSIT - Pickup → Delivery
-  const fetchRoutes = useCallback(async () => {
+  const fetchRoutes = useCallback(async (retryCount = 0) => {
     const relevantShipments = shipments.filter(
       (s) => s.driverId && (s.status === "APPROVED" || s.status === "IN_TRANSIT")
     );
@@ -282,7 +282,15 @@ export default function EnhancedDriversMap({ selectedDriverId = null, showOnlyDr
         }
       } catch (error) {
         // Route not available yet - simulation might not have started
-        console.log(`Route not available for shipment ${shipment.id}:`, error.message);
+        // Retry up to 3 times with exponential backoff
+        if (retryCount < 3 && error.response?.status !== 404) {
+          // Don't log retry attempts to avoid console spam
+          return null; // Will retry in next call
+        }
+        // Only log final failures
+        if (retryCount >= 3) {
+          console.log(`Route not available for shipment ${shipment.id} after retries`);
+        }
       }
       return null;
     });
@@ -292,6 +300,14 @@ export default function EnhancedDriversMap({ selectedDriverId = null, showOnlyDr
     routes.forEach((r) => {
       if (r) routeMap[r.driverId] = r.route;
     });
+    
+    // If no routes found and we haven't retried, retry once after a delay
+    if (Object.keys(routeMap).length === 0 && retryCount < 3 && relevantShipments.length > 0) {
+      setTimeout(() => {
+        fetchRoutes(retryCount + 1);
+      }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s
+      return;
+    }
     
     if (Object.keys(routeMap).length > 0) {
       console.log("✅ Routes fetched:", Object.keys(routeMap));
@@ -329,10 +345,15 @@ export default function EnhancedDriversMap({ selectedDriverId = null, showOnlyDr
         const hasRoute = Object.keys(routeData).includes(payload.driverId);
         if (hasRoute) {
           // Throttle: only refresh routes at configured interval during location updates
+          // But reduce throttle for simulation updates to keep route data fresh
+          const throttleTime = payload.source === 'SIMULATED' 
+            ? Math.min(refreshConfig.locationUpdateThrottle, 2000) // Max 2s for simulated
+            : refreshConfig.locationUpdateThrottle;
+          
           clearTimeout(handleLocationUpdate.timeout);
           handleLocationUpdate.timeout = setTimeout(() => {
-            fetchRoutes();
-          }, refreshConfig.locationUpdateThrottle);
+            fetchRoutes(0); // Reset retry count on location update
+          }, throttleTime);
         }
       }
     };

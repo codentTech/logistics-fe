@@ -192,9 +192,22 @@ export default function NotificationBadge() {
                           {notification.message}
                         </p>
                         <p className="text-xs text-gray-400 mt-1">
-                          {formatDistanceToNow(new Date(notification.createdAt), {
-                            addSuffix: true,
-                          })}
+                          {(() => {
+                            try {
+                              if (!notification.createdAt) {
+                                return "Just now";
+                              }
+                              const date = new Date(notification.createdAt);
+                              if (isNaN(date.getTime())) {
+                                return "Just now";
+                              }
+                              return formatDistanceToNow(date, {
+                                addSuffix: true,
+                              });
+                            } catch (error) {
+                              return "Just now";
+                            }
+                          })()}
                         </p>
                       </div>
                     </div>

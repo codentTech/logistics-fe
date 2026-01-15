@@ -5,6 +5,7 @@ import authReducer from "./features/auth/auth.slice";
 import shipmentsReducer from "./features/shipments/shipments.slice";
 import driversReducer from "./features/drivers/drivers.slice";
 import dashboardReducer from "./features/dashboard/dashboard.slice";
+import notificationsReducer from "./features/notifications/notifications.slice";
 
 const persistConfig = {
   key: "root",
@@ -17,6 +18,7 @@ const rootReducer = combineReducers({
   shipments: shipmentsReducer,
   drivers: driversReducer,
   dashboard: dashboardReducer,
+  notifications: notificationsReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

@@ -13,6 +13,7 @@ import {
 } from "@/provider/features/shipments/shipments.slice";
 import { getAllDrivers } from "@/provider/features/drivers/drivers.slice";
 import Loader from "@/common/components/loader/loader.component";
+import { refreshConfig } from "@/common/config/refresh.config";
 import CustomButton from "@/common/components/custom-button/custom-button.component";
 import CustomInput from "@/common/components/custom-input/custom-input.component";
 import AddressPicker from "@/common/components/address-picker/address-picker.component";
@@ -58,6 +59,7 @@ export default function Dashboard() {
 
   // Memoize online drivers and options to prevent dropdown from resetting
   const { onlineDrivers, driverOptions } = useMemo(() => {
+    // Filter online drivers (for map display)
     const onlineDrivers = drivers.list.filter((driver) => {
       const location = drivers.locations[driver.id] || driver.location;
       return (
@@ -71,16 +73,18 @@ export default function Dashboard() {
       );
     });
 
+    // Dropdown should show ALL drivers (not just online)
     const driverOptions = [
       { value: null, label: "All Drivers" },
-      ...onlineDrivers.map((driver) => {
+      ...drivers.list.map((driver) => {
         const driverName =
           driver.name?.trim() ||
           driver.user?.name?.trim() ||
           `Driver ${driver.id?.slice(0, 8) || "Unknown"}`;
+        const isOnline = onlineDrivers.some((online) => online.id === driver.id);
         return {
           value: driver.id,
-          label: driverName,
+          label: `${driverName}${isOnline ? " (Online)" : " (Offline)"}`,
         };
       }),
     ];
@@ -109,19 +113,19 @@ export default function Dashboard() {
     dispatch(getSummary());
     dispatch(getAllDrivers()); // Load drivers once on mount
     dispatch(getAllShipments()); // Load shipments for route data
-    // Refresh summary every 3 seconds for real-time updates
+    // Refresh summary at configured interval for real-time updates
     const interval = setInterval(() => {
       dispatch(getSummary());
-    }, 3000);
+    }, refreshConfig.dashboardSummaryInterval);
     return () => clearInterval(interval);
   }, [dispatch]);
 
-  // Listen to driver location updates and refresh summary in real-time
+  // Listen to driver location updates and shipment status updates
   useEffect(() => {
     if (!socket) return;
 
     let refreshTimeout = null;
-    const REFRESH_DELAY = 2000; // Throttle to refresh max once every 2 seconds
+    const REFRESH_DELAY = refreshConfig.dashboardSummaryThrottle;
 
     const handleDriverLocationUpdate = () => {
       // Throttle summary refresh to avoid too many API calls
@@ -135,13 +139,23 @@ export default function Dashboard() {
       }, REFRESH_DELAY);
     };
 
+    const handleShipmentStatusUpdate = (payload) => {
+      // Refresh shipments list when status changes to APPROVED or IN_TRANSIT
+      // This ensures route data is available for the map
+      if (payload && (payload.newStatus === "APPROVED" || payload.newStatus === "IN_TRANSIT")) {
+        dispatch(getAllShipments());
+      }
+    };
+
     socket.on("driver-location-update", handleDriverLocationUpdate);
+    socket.on("shipment-status-update", handleShipmentStatusUpdate);
 
     return () => {
       if (refreshTimeout) {
         clearTimeout(refreshTimeout);
       }
       socket.off("driver-location-update", handleDriverLocationUpdate);
+      socket.off("shipment-status-update", handleShipmentStatusUpdate);
     };
   }, [socket, dispatch]);
 
@@ -326,9 +340,9 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Driver Selection Dropdown */}
-            {onlineDrivers.length > 0 ? (
-              <div className="min-w-[300px]">
+            {/* Driver Selection Dropdown - Shows ALL drivers */}
+            {drivers.list.length > 0 ? (
+              <div className="min-w-[300px] relative z-[1000]">
                 <SimpleSelect
                   placeholder="All Drivers"
                   options={driverOptions}

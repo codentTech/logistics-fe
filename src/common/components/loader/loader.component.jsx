@@ -1,13 +1,13 @@
 import React from "react";
 
-function Loader({ loading, size = 10, color = "gray-600" }) {
+function Loader({ loading, size = 1, color = "indigo-600" }) {
   if (!loading) return null;
 
   const sizePx = `${size}px`;
-  const borderWidth = Math.max(3, Math.floor(size / 16));
+  const borderWidth = Math.max(4, Math.floor(size / 64));
 
   return (
-    <div className="flex items-center justify-center p-8">
+    <div className="flex items-center justify-center p-4">
       <div
         className="animate-spin rounded-full border-solid border-t-transparent"
         style={{

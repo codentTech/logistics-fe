@@ -3,7 +3,15 @@
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import { useDispatch } from "react-redux";
+import { enqueueSnackbar } from "notistack";
 import { updateDriverLocation } from "@/provider/features/drivers/drivers.slice";
+import {
+  addNotification,
+  incrementUnreadCount,
+  getNotifications,
+  getUnreadCount,
+} from "@/provider/features/notifications/notifications.slice";
+import { setCurrentShipment } from "@/provider/features/shipments/shipments.slice";
 import { getUser } from "@/common/utils/users.util";
 
 let globalSocket = null;
@@ -29,77 +37,112 @@ export default function useSocket() {
   useEffect(() => {
     const user = getUser();
     if (!user || !user.token) {
+      console.log("⚠️ useSocket: No user or token found");
       return;
     }
 
-    let socket = globalSocket;
-
-    if (!socket || !socket.connected) {
-      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_MAIN_URL || "http://localhost:5000";
-      
-      socket = io(socketUrl, {
-        auth: {
-          token: user.token,
-        },
-        transports: ["websocket", "polling"],
-        reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionAttempts: Infinity,
-        timeout: 20000,
-      });
-
-      globalSocket = socket;
-
-      socket.on("connect", () => {
-        if (user.tenantId) {
-          socket.emit("join-tenant", user.tenantId);
-        }
-      });
-
-      socket.on("connect_error", (error) => {
-        console.error("Socket.IO connection error:", error.message);
-      });
-
-      socket.off("driver-location-update");
-      socket.off("shipment-status-update");
-
-      socket.on("driver-location-update", (payload) => {
-        if (payload && payload.driverId && payload.location) {
-          if (locationUpdateCallback) {
-            locationUpdateCallback(payload);
-          }
-        }
-      });
-    } else {
-      if (user.tenantId) {
-        socket.emit("join-tenant", user.tenantId);
-      }
-      
-      socket.off("driver-location-update");
-      
-      const handler = (payload) => {
-        if (payload && payload.driverId && payload.location) {
-          const callback = locationUpdateCallback;
-          if (callback) {
-            callback(payload);
-          } else {
-            setTimeout(() => {
-              if (locationUpdateCallback) {
-                locationUpdateCallback(payload);
-              }
-            }, 100);
-          }
-        }
-      };
-      
-      socket.on("driver-location-update", handler);
+    // If global socket exists and is connected, use it immediately
+    if (globalSocket && globalSocket.connected) {
+      socketRef.current = globalSocket;
+      console.log("✅ Reusing existing global socket:", globalSocket.id);
+      return;
     }
 
-    socketRef.current = socket;
+    // If socket is already being created, wait for it
+    if (globalSocket && !globalSocket.connected) {
+      console.log("⏳ Socket is connecting, waiting...");
+      socketRef.current = globalSocket;
+      return;
+    }
 
-    return () => {};
-  }, []);
+    console.log("🔍 useSocket: Creating new socket connection");
 
-  return socketRef.current;
+    const socketUrl =
+      process.env.NEXT_PUBLIC_SOCKET_URL ||
+      process.env.NEXT_PUBLIC_MAIN_URL ||
+      "http://localhost:5000";
+
+    console.log("🔌 Creating new socket connection to:", socketUrl);
+    const socket = io(socketUrl, {
+      auth: {
+        token: user.token,
+      },
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: Infinity,
+      timeout: 20000,
+    });
+
+    globalSocket = socket;
+    socketRef.current = socket; // Set ref immediately so component can use it
+
+    socket.on("connect", () => {
+      console.log("✅ Socket connected:", socket.id);
+      if (user.tenantId) {
+        socket.emit("join-tenant", user.tenantId);
+        console.log("👋 Joined tenant room:", user.tenantId);
+      }
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Socket.IO connection error:", error.message);
+    });
+
+    socket.off("driver-location-update");
+    socket.off("notification");
+    socket.off("notification-updated");
+
+    socket.on("driver-location-update", (payload) => {
+      if (payload && payload.driverId && payload.location) {
+        if (locationUpdateCallback) {
+          locationUpdateCallback(payload);
+        }
+      }
+    });
+
+    // Note: shipment-status-update is handled by individual components
+    // No global listener needed - each component listens for its own shipmentId
+
+    socket.on("notification", (payload) => {
+      if (payload) {
+        // Add notification to Redux store
+        dispatch(
+          addNotification({
+            id: payload.shipmentId || Date.now().toString(),
+            type: payload.type,
+            title: payload.title,
+            message: payload.message,
+            shipmentId: payload.shipmentId,
+            status: "UNREAD",
+            createdAt: payload.timestamp || new Date().toISOString(),
+            metadata: payload,
+          })
+        );
+        dispatch(incrementUnreadCount());
+
+        // Show toast notification
+        enqueueSnackbar(payload.message || payload.title, {
+          variant: "info",
+          autoHideDuration: 5000,
+          anchorOrigin: { vertical: "bottom", horizontal: "right" },
+        });
+      }
+    });
+
+    // Listen for notification updates (refresh notification list)
+    socket.on("notification-updated", () => {
+      // Refresh notifications from server to avoid duplicates
+      dispatch(getNotifications({ limit: 20, offset: 0 }));
+      dispatch(getUnreadCount());
+    });
+
+    return () => {
+      // Don't disconnect on unmount - keep global socket alive for other components
+      // Only clear the ref for this component instance
+    };
+  }, [dispatch]);
+
+  // Return the socket from ref, or global socket if ref is null
+  return socketRef.current || globalSocket;
 }
-

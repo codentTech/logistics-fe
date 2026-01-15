@@ -119,7 +119,7 @@ const SimpleSelect = forwardRef(function SimpleSelect(
   // Get dropdown position classes
   const getDropdownClasses = () => {
     const baseClasses =
-      "absolute w-full bg-white border border-neutral-200 rounded-sm shadow-2xl overflow-hidden z-[1000]";
+      "absolute w-full bg-white border border-neutral-200 rounded-sm shadow-2xl overflow-hidden z-[1001]";
     const positionClasses = "top-full mt-1";
 
     return `${baseClasses} ${positionClasses}`;
@@ -152,7 +152,7 @@ const SimpleSelect = forwardRef(function SimpleSelect(
         />
       )}
 
-      <div className="relative w-full z-[999]">
+      <div className="relative w-full z-[1000]">
         {/* Main Select Input */}
         <div
           ref={inputRef}

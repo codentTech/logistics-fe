@@ -62,6 +62,22 @@ const getShipmentRoute = async (shipmentId) => {
   return response.data;
 };
 
+// Approve shipment assignment
+const approveAssignment = async (shipmentId) => {
+  const response = await api(getIdempotencyHeaders()).post(
+    `/v1/shipments/${shipmentId}/approve`
+  );
+  return response.data;
+};
+
+// Reject shipment assignment
+const rejectAssignment = async (shipmentId) => {
+  const response = await api(getIdempotencyHeaders()).post(
+    `/v1/shipments/${shipmentId}/reject`
+  );
+  return response.data;
+};
+
 const shipmentsService = {
   createShipment,
   getAllShipments,
@@ -71,6 +87,8 @@ const shipmentsService = {
   cancelByCustomer,
   cancelByDriver,
   getShipmentRoute,
+  approveAssignment,
+  rejectAssignment,
 };
 
 export default shipmentsService;

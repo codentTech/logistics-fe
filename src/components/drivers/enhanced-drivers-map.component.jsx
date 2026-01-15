@@ -11,7 +11,7 @@
  * - Smooth animations
  */
 
-import { useMemo, useEffect, useRef, useState } from "react";
+import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, CircleMarker } from "react-leaflet";
@@ -29,6 +29,7 @@ import {
   formatETA,
 } from "@/common/utils/map-calculations.util";
 import api from "@/common/utils/api";
+import { refreshConfig } from "@/common/config/refresh.config";
 
 // Fix Leaflet default icon issue
 import L from "leaflet";
@@ -86,19 +87,26 @@ function MapViewUpdater({ selectedDriverId, driversWithLocations, drivers, follo
   const map = useMap();
 
   useEffect(() => {
-    if (!map || !map.getContainer()) return;
+    if (!map) return;
+    
+    try {
+      const container = map.getContainer();
+      if (!container || !container.parentElement) return;
 
-    if (selectedDriverId && followDriver) {
-      const selectedDriver = driversWithLocations.find((driver) => driver.id === selectedDriverId);
-      if (selectedDriver) {
-        const location = drivers.locations[selectedDriver.id] || selectedDriver.location;
-        if (location?.latitude && location?.longitude) {
-          map.setView([location.latitude, location.longitude], 15, {
-            animate: true,
-            duration: 0.5,
-          });
+      if (selectedDriverId && followDriver) {
+        const selectedDriver = driversWithLocations.find((driver) => driver.id === selectedDriverId);
+        if (selectedDriver) {
+          const location = drivers.locations[selectedDriver.id] || selectedDriver.location;
+          if (location?.latitude && location?.longitude) {
+            map.setView([location.latitude, location.longitude], 15, {
+              animate: true,
+              duration: 0.5,
+            });
+          }
         }
       }
+    } catch (error) {
+      console.warn("Map view updater error:", error);
     }
   }, [selectedDriverId, driversWithLocations, drivers.locations, map, followDriver]);
 
@@ -186,7 +194,9 @@ function EnhancedMarker({ position, icon, children, driverId, history = [] }) {
 
 export default function EnhancedDriversMap({ selectedDriverId = null, showOnlyDriverId = null }) {
   const containerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [mapKey, setMapKey] = useState(0);
   const [followDriver, setFollowDriver] = useState(false);
   const [routeData, setRouteData] = useState({});
   const [driverHistory, setDriverHistory] = useState({});
@@ -201,48 +211,140 @@ export default function EnhancedDriversMap({ selectedDriverId = null, showOnlyDr
 
   const shipments = useSelector((state) => state.shipments?.shipments?.list || []);
   
-  useSocket();
+  const socket = useSocket();
 
   useEffect(() => {
     // Ensure we're in the browser and DOM is ready
-    if (typeof window !== "undefined") {
-      // Use a small delay to ensure DOM is fully ready
-      const timer = setTimeout(() => {
+    if (typeof window === "undefined") return;
+    
+    // Check if container exists and is in DOM
+    let attempts = 0;
+    const maxAttempts = 10;
+    const checkContainer = () => {
+      attempts++;
+      if (containerRef.current && document.body.contains(containerRef.current)) {
+        // Verify the element is actually visible/rendered
+        const rect = containerRef.current.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          setIsMounted(true);
+          return;
+        }
+      }
+      
+      // Retry after a short delay (max attempts)
+      if (attempts < maxAttempts) {
+        setTimeout(checkContainer, 100);
+      } else {
+        console.warn("Map container not ready after max attempts");
+        // Still try to set mounted to allow rendering
         setIsMounted(true);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
+      }
+    };
+    
+    // Initial check with delay to ensure DOM is ready
+    const timer = setTimeout(checkContainer, 150);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Reset map on unmount to prevent reuse errors
+  useEffect(() => {
+    return () => {
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+        mapInstanceRef.current = null;
+      }
+      setIsMounted(false);
+    };
   }, []);
 
   // Fetch route data for drivers with active shipments
+  // Phase 1 (TO_PICKUP): When status is APPROVED - Driver location → Pickup
+  // Phase 2 (TO_DELIVERY): When status is IN_TRANSIT - Pickup → Delivery
+  const fetchRoutes = useCallback(async () => {
+    const relevantShipments = shipments.filter(
+      (s) => s.driverId && (s.status === "APPROVED" || s.status === "IN_TRANSIT")
+    );
+    
+    if (relevantShipments.length === 0) {
+      setRouteData({});
+      return;
+    }
+
+    const routePromises = relevantShipments.map(async (shipment) => {
+      try {
+        const response = await api().get(`/v1/shipments/${shipment.id}/route`);
+        if (response.data?.success && response.data?.data) {
+          return { driverId: shipment.driverId, route: response.data.data };
+        }
+      } catch (error) {
+        // Route not available yet - simulation might not have started
+        console.log(`Route not available for shipment ${shipment.id}:`, error.message);
+      }
+      return null;
+    });
+
+    const routes = await Promise.all(routePromises);
+    const routeMap = {};
+    routes.forEach((r) => {
+      if (r) routeMap[r.driverId] = r.route;
+    });
+    
+    if (Object.keys(routeMap).length > 0) {
+      console.log("✅ Routes fetched:", Object.keys(routeMap));
+    }
+    
+    setRouteData(routeMap);
+  }, [shipments]);
+
   useEffect(() => {
-    const fetchRoutes = async () => {
-      const routePromises = shipments
-        .filter((s) => s.driverId && (s.status === "ASSIGNED" || s.status === "IN_TRANSIT"))
-        .map(async (shipment) => {
-          try {
-            const response = await api().get(`/v1/shipments/${shipment.id}/route`);
-            if (response.data?.success && response.data?.data) {
-              return { driverId: shipment.driverId, route: response.data.data };
-            }
-          } catch (error) {
-            // Route not available
-          }
-          return null;
-        });
-
-      const routes = await Promise.all(routePromises);
-      const routeMap = {};
-      routes.forEach((r) => {
-        if (r) routeMap[r.driverId] = r.route;
-      });
-      setRouteData(routeMap);
-    };
-
     if (shipments.length > 0) {
       fetchRoutes();
     }
-  }, [shipments]);
+  }, [shipments, fetchRoutes]);
+
+  // Listen for shipment status updates and driver location updates to refresh routes
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleStatusUpdate = (payload) => {
+      // Refresh routes when shipment status changes to APPROVED or IN_TRANSIT
+      if (payload && (payload.newStatus === "APPROVED" || payload.newStatus === "IN_TRANSIT")) {
+        console.log("🔄 Shipment status changed to", payload.newStatus, "- Refreshing routes...");
+        // Small delay to ensure backend has processed the route simulation
+        setTimeout(() => {
+          fetchRoutes();
+        }, refreshConfig.routeRefreshDelay);
+      }
+    };
+
+    const handleLocationUpdate = (payload) => {
+      // Refresh routes when driver location updates (throttled)
+      // This ensures route data stays current during simulation
+      if (payload && payload.driverId) {
+        // Only refresh if this driver has an active route
+        const hasRoute = Object.keys(routeData).includes(payload.driverId);
+        if (hasRoute) {
+          // Throttle: only refresh routes at configured interval during location updates
+          clearTimeout(handleLocationUpdate.timeout);
+          handleLocationUpdate.timeout = setTimeout(() => {
+            fetchRoutes();
+          }, refreshConfig.locationUpdateThrottle);
+        }
+      }
+    };
+
+    socket.on("shipment-status-update", handleStatusUpdate);
+    socket.on("driver-location-update", handleLocationUpdate);
+
+    return () => {
+      socket.off("shipment-status-update", handleStatusUpdate);
+      socket.off("driver-location-update", handleLocationUpdate);
+    };
+  }, [socket, fetchRoutes]);
 
   // Track driver history and calculate speed/ETA
   useEffect(() => {
@@ -318,9 +420,10 @@ export default function EnhancedDriversMap({ selectedDriverId = null, showOnlyDr
   }, [drivers.list, drivers.locations, showOnlyDriverId]);
 
   // Get shipments for selected driver
+  // Include APPROVED status for Phase 1 (TO_PICKUP) route visualization
   const selectedDriverShipments = useMemo(() => {
     if (!selectedDriverId) return [];
-    return shipments.filter((s) => s.driverId === selectedDriverId && (s.status === "ASSIGNED" || s.status === "IN_TRANSIT"));
+    return shipments.filter((s) => s.driverId === selectedDriverId && (s.status === "APPROVED" || s.status === "IN_TRANSIT"));
   }, [selectedDriverId, shipments]);
 
   const mapCenter = useMemo(() => {
@@ -394,41 +497,67 @@ export default function EnhancedDriversMap({ selectedDriverId = null, showOnlyDr
         </button>
       </div>
 
-      {isMounted && (
-        <MapContainer
-        center={mapCenter}
-        zoom={selectedDriverId ? 15 : driversWithLocations.length > 0 ? 12 : 10}
-        style={{ height: "100%", width: "100%" }}
-        scrollWheelZoom={true}
-        whenReady={() => {
-          // Map is ready
-        }}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        
-        <MapViewUpdater
-          selectedDriverId={selectedDriverId}
-          driversWithLocations={driversWithLocations}
-          drivers={drivers}
-          followDriver={followDriver}
-        />
+      {isMounted && containerRef.current && (() => {
+        try {
+          // Double-check container is in DOM and has dimensions
+          if (!containerRef.current || !document.body.contains(containerRef.current)) {
+            return null;
+          }
+          const rect = containerRef.current.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) {
+            return null;
+          }
+          
+          return (
+            <MapContainer
+              key={`map-${mapKey}`}
+              center={mapCenter}
+              zoom={selectedDriverId ? 15 : driversWithLocations.length > 0 ? 12 : 10}
+              style={{ height: "100%", width: "100%" }}
+              scrollWheelZoom={true}
+              whenCreated={(mapInstance) => {
+                try {
+                  mapInstanceRef.current = mapInstance;
+                } catch (e) {
+                  console.warn("Map instance creation error:", e);
+                }
+              }}
+              whenReady={() => {
+                // Map is ready
+              }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              
+              <MapViewUpdater
+                selectedDriverId={selectedDriverId}
+                driversWithLocations={driversWithLocations}
+                drivers={drivers}
+                followDriver={followDriver}
+              />
 
         {/* Route polylines */}
+        {/* Phase 1 (TO_PICKUP): Green dashed line - Driver location → Pickup */}
+        {/* Phase 2 (TO_DELIVERY): Blue dashed line - Pickup → Delivery */}
         {Object.entries(routeData).map(([driverId, route]) => {
           if (!route?.routePoints || route.routePoints.length < 2) return null;
+          
+          // Different colors/styles for different phases
+          const isPhase1 = route.phase === 'TO_PICKUP';
+          const pathOptions = {
+            color: isPhase1 ? "#10B981" : "#3B82F6", // Green for TO_PICKUP, Blue for TO_DELIVERY
+            weight: 4,
+            opacity: 0.7,
+            dashArray: isPhase1 ? "15, 10" : "10, 5", // Different dash pattern
+          };
+          
           return (
             <Polyline
-              key={`route-${driverId}`}
+              key={`route-${driverId}-${route.phase || 'default'}`}
               positions={route.routePoints.map((p) => [p.lat, p.lng])}
-              pathOptions={{
-                color: "#3B82F6",
-                weight: 4,
-                opacity: 0.7,
-                dashArray: "10, 5",
-              }}
+              pathOptions={pathOptions}
             />
           );
         })}
@@ -453,8 +582,9 @@ export default function EnhancedDriversMap({ selectedDriverId = null, showOnlyDr
             const etaData = driverETAs[driver.id];
             
             // Get active shipment for this driver
+            // Include APPROVED status for Phase 1 (TO_PICKUP) route visualization
             const activeShipment = shipments.find(
-              (s) => s.driverId === driver.id && (s.status === "ASSIGNED" || s.status === "IN_TRANSIT")
+              (s) => s.driverId === driver.id && (s.status === "APPROVED" || s.status === "IN_TRANSIT")
             );
 
             return (
@@ -551,8 +681,17 @@ export default function EnhancedDriversMap({ selectedDriverId = null, showOnlyDr
             </p>
           </div>
         )}
-        </MapContainer>
-      )}
+            </MapContainer>
+          );
+        } catch (error) {
+          console.error("Error rendering map:", error);
+          return (
+            <div className="flex h-full items-center justify-center">
+              <div className="text-sm text-red-600">Error loading map. Please refresh the page.</div>
+            </div>
+          );
+        }
+      })()}
     </div>
   );
 }

@@ -22,6 +22,7 @@ import {
 import { Search } from "lucide-react";
 import useRole from "@/common/hooks/use-role.hook";
 import ROLES from "@/common/constants/role.constant";
+import useSocket from "@/common/hooks/use-socket.hook";
 
 const validationSchema = Yup.object().shape({
   pickupAddress: Yup.string().required("Pickup address is required"),
@@ -37,6 +38,7 @@ export default function ShipmentsList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const { isAdmin } = useRole();
+  const socket = useSocket();
 
   const {
     register,
@@ -53,6 +55,24 @@ export default function ShipmentsList() {
   useEffect(() => {
     dispatch(getAllShipments());
   }, [dispatch]);
+
+  // Listen for shipment updates via socket for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleStatusUpdate = (payload) => {
+      // Refresh shipments list when shipment status changes
+      if (payload && payload.shipmentId) {
+        dispatch(getAllShipments());
+      }
+    };
+
+    socket.on("shipment-status-update", handleStatusUpdate);
+
+    return () => {
+      socket.off("shipment-status-update", handleStatusUpdate);
+    };
+  }, [socket, dispatch]);
 
   const handleCreateNew = () => {
     setIsCreateModalOpen(true);
@@ -80,6 +100,16 @@ export default function ShipmentsList() {
   };
 
   const filteredShipments = shipments.list.filter((shipment) => {
+    // Filter out cancelled shipments - drivers should not see cancelled shipments
+    // Even if status is CREATED after cancellation, if it was cancelled, exclude it
+    if (
+      shipment.status === "CANCEL_BY_DRIVER" ||
+      shipment.status === "CANCEL_BY_CUSTOMER"
+    ) {
+      return false;
+    }
+
+    // Apply search filter
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (

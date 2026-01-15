@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import PropTypes from "prop-types";
 import { useEffect, useMemo, useRef } from "react";
 import useNavbar from "./use-navbar.hook";
+import NotificationBadge from "@/common/components/notifications/notification-badge.component";
 
 export default function Navbar({ title }) {
   const { user, open, handleClick, profileMenu, handleLogout } = useNavbar();
@@ -96,8 +97,11 @@ export default function Navbar({ title }) {
           </ol>
         </nav>
 
-        <div className="relative z-50">
-          <button
+        <div className="flex items-center gap-4">
+          <NotificationBadge />
+          
+          <div className="relative z-50">
+            <button
             ref={buttonRef}
             onClick={handleClick}
             className="flex items-center gap-2 rounded-lg border-0 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-0 active:border-0"
@@ -151,6 +155,7 @@ export default function Navbar({ title }) {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

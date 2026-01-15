@@ -7,6 +7,7 @@ import driversService from "@/provider/features/drivers/drivers.service";
 import { getAllDrivers } from "@/provider/features/drivers/drivers.slice";
 import { MapPin, XCircle } from "lucide-react";
 import Loader from "@/common/components/loader/loader.component";
+import { refreshConfig } from "@/common/config/refresh.config";
 
 export default function DriverLocationShare() {
   const dispatch = useDispatch();
@@ -247,7 +248,7 @@ export default function DriverLocationShare() {
 
     setWatchId(id);
 
-    // Send location to server every 3 seconds
+    // Send location to server at configured interval
     const sendLocationInterval = setInterval(() => {
       const location = currentLocationRef.current;
       if (location) {
@@ -280,7 +281,7 @@ export default function DriverLocationShare() {
           }
         );
       }
-    }, 3000); // 3 seconds
+    }, refreshConfig.driverLocationShareInterval);
 
     locationIntervalRef.current = sendLocationInterval;
 
@@ -492,7 +493,7 @@ export default function DriverLocationShare() {
             <div className="rounded-lg bg-blue-50 p-3">
               <p className="text-xs text-blue-800">
                 <strong>Note:</strong> Your location is being sent to the admin
-                dashboard every 3 seconds. Make sure to allow location
+                dashboard at configured intervals. Make sure to allow location
                 permissions in your browser.
               </p>
             </div>

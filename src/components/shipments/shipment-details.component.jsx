@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
@@ -10,6 +10,9 @@ import {
   updateStatus,
   cancelByCustomer,
   cancelByDriver,
+  approveAssignment,
+  rejectAssignment,
+  updateCurrentShipment,
 } from "@/provider/features/shipments/shipments.slice";
 import useRole from "@/common/hooks/use-role.hook";
 import { getAllDrivers } from "@/provider/features/drivers/drivers.slice";
@@ -37,7 +40,7 @@ const EnhancedDriversMap = dynamic(
   }
 );
 
-const STATUS_OPTIONS = ["ASSIGNED", "IN_TRANSIT", "DELIVERED"];
+const STATUS_OPTIONS = ["ASSIGNED", "APPROVED", "IN_TRANSIT", "DELIVERED"];
 
 export default function ShipmentDetails({ shipmentId }) {
   const router = useRouter();
@@ -48,58 +51,129 @@ export default function ShipmentDetails({ shipmentId }) {
     updateStatus: updateStatusState,
     cancelByCustomer: cancelByCustomerState,
     cancelByDriver: cancelByDriverState,
+    approveAssignment: approveAssignmentState,
+    rejectAssignment: rejectAssignmentState,
   } = useSelector((state) => state.shipments);
   const drivers = useSelector((state) => state.drivers);
+
+  // Subscribe directly to current shipment to ensure re-renders on updates
+  const currentShipment = useSelector(
+    (state) => state.shipments.shipments.current
+  );
+  const shipmentUpdateTime = useSelector(
+    (state) => state.shipments.shipments.updatedAt
+  );
+
   const [selectedDriverId, setSelectedDriverId] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelType, setCancelType] = useState(null); // 'customer' or 'driver'
+  const refreshTimeoutRef = useRef(null); // For debouncing API calls
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Get current user role
   const { role: userRole, isAdmin } = useRole();
 
-  // Initialize Socket.IO for real-time location updates
   const socket = useSocket();
 
   useEffect(() => {
-    dispatch(getShipmentById(shipmentId));
+    setIsInitialLoad(true);
+    dispatch(getShipmentById(shipmentId)).then(() => {
+      setIsInitialLoad(false);
+    });
     dispatch(getAllDrivers());
   }, [dispatch, shipmentId]);
 
-  // Listen for shipment status updates via socket
+  // Listen for shipment status updates via socket for real-time updates
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      return;
+    }
 
     const handleStatusUpdate = (payload) => {
       if (payload && payload.shipmentId === shipmentId) {
-        // Refresh shipment data when status changes
-        dispatch(getShipmentById(shipmentId));
+        const updateData = {
+          id: payload.shipmentId,
+          status: payload.newStatus,
+        };
+
+        if ("driverId" in payload) {
+          updateData.driverId = payload.driverId;
+          if (payload.driverId === null || payload.driverId === undefined) {
+            updateData.assignedAt = null;
+            updateData.driver = null;
+          }
+        }
+        if ("pendingApproval" in payload) {
+          updateData.pendingApproval =
+            payload.pendingApproval !== null &&
+            payload.pendingApproval !== undefined
+              ? payload.pendingApproval
+              : false;
+        }
+
+        dispatch(updateCurrentShipment(updateData));
+
+        // Skip API refresh if driverId is null (rejection/cancellation)
+        // This prevents "You can only view shipments assigned to you" error
+        if (refreshTimeoutRef.current) {
+          clearTimeout(refreshTimeoutRef.current);
+        }
+
+        // Only refresh from API if driverId is not null
+        // For rejections/cancellations (driverId null), the socket payload is sufficient
+        if (payload.driverId !== null && payload.driverId !== undefined) {
+          refreshTimeoutRef.current = setTimeout(() => {
+            dispatch(getShipmentById(shipmentId));
+          }, 300);
+        }
       }
     };
 
-    socket.on("shipment-status-update", handleStatusUpdate);
+    // Set up listener when socket connects
+    const setupListener = () => {
+      socket.off("shipment-status-update", handleStatusUpdate);
+      socket.on("shipment-status-update", handleStatusUpdate);
+    };
+
+    if (socket.connected) {
+      setupListener();
+    } else {
+      socket.on("connect", setupListener);
+    }
 
     return () => {
       socket.off("shipment-status-update", handleStatusUpdate);
+      socket.off("connect", setupListener);
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
     };
   }, [socket, shipmentId, dispatch]);
 
-  const shipment = shipments.current;
+  // Use the specific selector to ensure re-renders on updates
+  const shipment = currentShipment || shipments.current;
 
   // Get driver information from shipment or drivers list
   const assignedDriver = useMemo(() => {
-    if (!shipment?.driverId) return null;
+    // Explicitly check for null/undefined to ensure driver is removed when rejected
+    if (
+      !shipment?.driverId ||
+      shipment.driverId === null ||
+      shipment.driverId === undefined
+    ) {
+      return null;
+    }
 
     // First try to get from shipment.driver (if backend includes it)
     if (shipment.driver) {
       return shipment.driver;
     }
 
-    // Otherwise, find from drivers list
     return (
       drivers.list.find((driver) => driver.id === shipment.driverId) || null
     );
-  }, [shipment, drivers.list]);
+  }, [shipment?.driverId, shipment?.driver, drivers.list]);
 
   // Prepare driver options for SimpleSelect
   const driverOptions = useMemo(() => {
@@ -126,6 +200,9 @@ export default function ShipmentDetails({ shipmentId }) {
         return status === "ASSIGNED";
       }
       if (shipment.status === "ASSIGNED") {
+        return false; // Driver must approve first
+      }
+      if (shipment.status === "APPROVED") {
         return status === "IN_TRANSIT";
       }
       if (shipment.status === "IN_TRANSIT") {
@@ -219,7 +296,9 @@ export default function ShipmentDetails({ shipmentId }) {
     shipment.status !== "CANCEL_BY_DRIVER" &&
     (userRole === "customer" || (userRole === "driver" && shipment.driverId));
 
-  if (shipments.isLoading || !shipment) {
+  // Only show full-page loader on initial load
+  // For subsequent updates, show the component with current data (from socket or Redux)
+  if (isInitialLoad && (shipments.isLoading || !shipment)) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <Loader loading={true} size={60} />
@@ -227,16 +306,37 @@ export default function ShipmentDetails({ shipmentId }) {
     );
   }
 
+  // If no shipment after initial load, show error state
+  if (!shipment) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500">Shipment not found</p>
+          <CustomButton
+            text="Back to Shipments"
+            onClick={() => router.push("/shipments")}
+            variant="outline"
+            size="sm"
+            className="mt-4"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
-        <div>
+        <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold text-gray-900">
             Shipment Details
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            ID: {shipment.id.substring(0, 8)}...
-          </p>
+          {shipments.isLoading && !isInitialLoad && (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600"></div>
+              <span>Updating...</span>
+            </div>
+          )}
         </div>
         <CustomButton
           text="Back"
@@ -370,9 +470,68 @@ export default function ShipmentDetails({ shipmentId }) {
               </div>
             )}
 
+          {/* Approval Section - Show to driver when shipment is ASSIGNED with pendingApproval */}
+          {/* Show if pendingApproval is true OR undefined (for backward compatibility) */}
+          {userRole === "driver" &&
+            shipment?.status === "ASSIGNED" &&
+            shipment?.driverId &&
+            (shipment?.pendingApproval === true ||
+              shipment?.pendingApproval === undefined) && (
+              <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-5 shadow-sm">
+                <h3 className="mb-3 text-sm font-semibold text-indigo-900">
+                  Shipment Assignment Approval
+                </h3>
+                <p className="mb-4 text-sm text-indigo-700">
+                  You have been assigned to this shipment. Please review and
+                  approve or reject the assignment within 5 minutes.
+                </p>
+                <div className="flex gap-3">
+                  <CustomButton
+                    text="Approve"
+                    onClick={async () => {
+                      await dispatch(
+                        approveAssignment({
+                          shipmentId: shipment.id,
+                          successCallBack: () => {
+                            dispatch(getShipmentById(shipmentId));
+                          },
+                        })
+                      );
+                    }}
+                    variant="primary"
+                    size="sm"
+                    loading={approveAssignmentState.isLoading}
+                    disabled={approveAssignmentState.isLoading}
+                  />
+                  <CustomButton
+                    text="Reject"
+                    onClick={async () => {
+                      await dispatch(
+                        rejectAssignment({
+                          shipmentId: shipment.id,
+                          successCallBack: () => {
+                            if (userRole === "driver") {
+                              router.push("/shipments");
+                            } else {
+                              dispatch(getShipmentById(shipmentId));
+                            }
+                          },
+                        })
+                      );
+                    }}
+                    variant="outline"
+                    size="sm"
+                    loading={rejectAssignmentState.isLoading}
+                    disabled={rejectAssignmentState.isLoading}
+                  />
+                </div>
+              </div>
+            )}
+
           {/* Note: Driver reassignment is not allowed once assigned (unless cancelled) */}
           {shipment.driverId &&
             shipment.status === "ASSIGNED" &&
+            !shipment.pendingApproval &&
             userRole === "ops_admin" && (
               <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 shadow-sm">
                 <p className="text-xs text-yellow-800">
@@ -412,7 +571,7 @@ export default function ShipmentDetails({ shipmentId }) {
               </div>
             )}
 
-          {shipment.status !== "DELIVERED" && !shipment.driverId && (
+          {isAdmin && shipment.status !== "DELIVERED" && !shipment.driverId && (
             <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
               <h3 className="mb-4 text-sm font-semibold text-gray-700">
                 Update Status

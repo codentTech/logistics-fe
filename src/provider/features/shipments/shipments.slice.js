@@ -13,6 +13,7 @@ const initialState = {
   shipments: {
     list: [],
     current: null,
+    updatedAt: null, // Track updates to force re-renders
     ...generalState,
   },
   create: generalState,
@@ -20,6 +21,8 @@ const initialState = {
   updateStatus: generalState,
   cancelByCustomer: generalState,
   cancelByDriver: generalState,
+  approveAssignment: generalState,
+  rejectAssignment: generalState,
 };
 
 // Get all shipments
@@ -170,6 +173,50 @@ export const cancelByDriver = createAsyncThunk(
   }
 );
 
+// Approve assignment
+export const approveAssignment = createAsyncThunk(
+  'shipments/approveAssignment',
+  async ({ shipmentId, successCallBack }, thunkAPI) => {
+    try {
+      const response = await shipmentsService.approveAssignment(shipmentId);
+      if (response.success) {
+        if (successCallBack) {
+          successCallBack(response.data);
+        }
+        return response.data;
+      }
+      return thunkAPI.rejectWithValue(response);
+    } catch (error) {
+      return thunkAPI.rejectWithValue({
+        message: error.response?.data?.message || error.message,
+        error_code: error.response?.data?.error_code,
+      });
+    }
+  }
+);
+
+// Reject assignment
+export const rejectAssignment = createAsyncThunk(
+  'shipments/rejectAssignment',
+  async ({ shipmentId, successCallBack }, thunkAPI) => {
+    try {
+      const response = await shipmentsService.rejectAssignment(shipmentId);
+      if (response.success) {
+        if (successCallBack) {
+          successCallBack(response.data);
+        }
+        return response.data;
+      }
+      return thunkAPI.rejectWithValue(response);
+    } catch (error) {
+      return thunkAPI.rejectWithValue({
+        message: error.response?.data?.message || error.message,
+        error_code: error.response?.data?.error_code,
+      });
+    }
+  }
+);
+
 export const shipmentsSlice = createSlice({
   name: 'shipments',
   initialState,
@@ -183,6 +230,30 @@ export const shipmentsSlice = createSlice({
     },
     setCurrentShipment: (state, action) => {
       state.shipments.current = action.payload;
+    },
+    updateCurrentShipment: (state, action) => {
+      if (state.shipments.current?.id === action.payload.id) {
+        const updatedShipment = {
+          ...state.shipments.current,
+          ...action.payload,
+        };
+        
+        if (action.payload.driverId === null || action.payload.driverId === undefined) {
+          updatedShipment.assignedAt = null;
+          updatedShipment.driver = null;
+          updatedShipment.driverId = null;
+        }
+        
+        // Ensure status is updated if provided
+        if (action.payload.status) {
+          updatedShipment.status = action.payload.status;
+        }
+        
+        state.shipments.current = updatedShipment;
+      } else if (action.payload.id && !state.shipments.current) {
+        state.shipments.current = action.payload;
+      }
+      state.shipments.updatedAt = Date.now();
     },
     clearCurrentShipment: (state) => {
       state.shipments.current = null;
@@ -339,10 +410,60 @@ export const shipmentsSlice = createSlice({
         state.cancelByDriver.isLoading = false;
         state.cancelByDriver.isError = true;
         state.cancelByDriver.message = action.payload?.message || 'Failed to cancel shipment';
+      })
+      // Approve assignment
+      .addCase(approveAssignment.pending, (state) => {
+        state.approveAssignment.isLoading = true;
+        state.approveAssignment.isError = false;
+        state.approveAssignment.message = '';
+      })
+      .addCase(approveAssignment.fulfilled, (state, action) => {
+        state.approveAssignment.isLoading = false;
+        state.approveAssignment.isSuccess = true;
+        state.approveAssignment.data = action.payload;
+        // Update in list
+        const index = state.shipments.list.findIndex((s) => s.id === action.payload.id);
+        if (index !== -1) {
+          state.shipments.list[index] = action.payload;
+        }
+        // Update current if it's the same shipment
+        if (state.shipments.current?.id === action.payload.id) {
+          state.shipments.current = action.payload;
+        }
+      })
+      .addCase(approveAssignment.rejected, (state, action) => {
+        state.approveAssignment.isLoading = false;
+        state.approveAssignment.isError = true;
+        state.approveAssignment.message = action.payload?.message || 'Failed to approve assignment';
+      })
+      // Reject assignment
+      .addCase(rejectAssignment.pending, (state) => {
+        state.rejectAssignment.isLoading = true;
+        state.rejectAssignment.isError = false;
+        state.rejectAssignment.message = '';
+      })
+      .addCase(rejectAssignment.fulfilled, (state, action) => {
+        state.rejectAssignment.isLoading = false;
+        state.rejectAssignment.isSuccess = true;
+        state.rejectAssignment.data = action.payload;
+        // Update in list
+        const index = state.shipments.list.findIndex((s) => s.id === action.payload.id);
+        if (index !== -1) {
+          state.shipments.list[index] = action.payload;
+        }
+        // Update current if it's the same shipment
+        if (state.shipments.current?.id === action.payload.id) {
+          state.shipments.current = action.payload;
+        }
+      })
+      .addCase(rejectAssignment.rejected, (state, action) => {
+        state.rejectAssignment.isLoading = false;
+        state.rejectAssignment.isError = true;
+        state.rejectAssignment.message = action.payload?.message || 'Failed to reject assignment';
       });
   },
 });
 
-export const { reset, setCurrentShipment, clearCurrentShipment } = shipmentsSlice.actions;
+export const { reset, setCurrentShipment, updateCurrentShipment, clearCurrentShipment } = shipmentsSlice.actions;
 export default shipmentsSlice.reducer;
 

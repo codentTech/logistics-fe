@@ -24,7 +24,10 @@ import { formatDistanceToNow } from "date-fns";
 export default function NotificationBadge() {
   const dispatch = useDispatch();
   const [isOpen, setIsOpen] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 60, right: 24 });
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 60,
+    right: 24,
+  });
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
 
@@ -87,7 +90,7 @@ export default function NotificationBadge() {
 
   const getNotificationIcon = (type) => {
     const iconClass = "h-4 w-4 flex-shrink-0";
-    
+
     switch (type) {
       case "SHIPMENT_ASSIGNED":
         return <Package className={`${iconClass} text-blue-500`} />;
@@ -121,9 +124,9 @@ export default function NotificationBadge() {
         className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors"
         aria-label="Notifications"
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="h-6 w-6" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+          <span className="absolute top-0 -right-1.5 flex p-1 h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -133,15 +136,17 @@ export default function NotificationBadge() {
         <div
           ref={dropdownRef}
           className="fixed w-96 rounded-lg border border-gray-200 bg-white shadow-lg max-h-[500px] overflow-hidden flex flex-col"
-          style={{ 
-            zIndex: 99999, 
+          style={{
+            zIndex: 99999,
             top: `${dropdownPosition.top}px`,
-            right: `${dropdownPosition.right}px`
+            right: `${dropdownPosition.right}px`,
           }}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-            <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+            <h3 className="text-sm font-semibold text-gray-900">
+              Notifications
+            </h3>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
@@ -180,7 +185,9 @@ export default function NotificationBadge() {
                           </p>
                           {notification.status === "UNREAD" && (
                             <button
-                              onClick={(e) => handleMarkAsRead(notification.id, e)}
+                              onClick={(e) =>
+                                handleMarkAsRead(notification.id, e)
+                              }
                               className="flex-shrink-0 p-1 hover:bg-gray-200 rounded"
                               aria-label="Mark as read"
                             >
@@ -234,4 +241,3 @@ export default function NotificationBadge() {
     </div>
   );
 }
-

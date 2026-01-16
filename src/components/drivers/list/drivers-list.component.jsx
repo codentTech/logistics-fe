@@ -1,26 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { getAllDrivers } from "@/provider/features/drivers/drivers.slice";
 import Loader from "@/common/components/loader/loader.component";
-import useSocket from "@/common/hooks/use-socket.hook";
+import { useDriversListHook } from "./use-drivers-list.hook";
 
 export default function DriversList() {
-  const dispatch = useDispatch();
-  const drivers = useSelector((state) => state.drivers);
-
-  // Initialize Socket.IO for real-time location updates
-  useSocket();
-
-  useEffect(() => {
-    dispatch(getAllDrivers());
-  }, [dispatch]);
+  const { drivers } = useDriversListHook();
 
   if (drivers.isLoading) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <Loader loading={true} size={60} />
+      <div className="p-6">
+        <div className="mb-6">
+          <div className="h-7 w-32 animate-pulse rounded bg-gray-200"></div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white">
+          <Loader loading={true} variant="table" />
+        </div>
       </div>
     );
   }

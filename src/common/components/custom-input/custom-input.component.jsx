@@ -82,8 +82,9 @@ export default function CustomInput({
   // Get input classes based on new theme system
   const getInputClasses = () => {
     // Base border and styling (no padding here - padding goes on Input component)
+    // Remove all focus rings and borders on focus
     const baseClasses =
-      "w-full border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-400 focus:outline-none transition-colors duration-200";
+      "w-full border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-gray-300 transition-colors duration-200";
 
     // Size classes (only height and text size, no padding)
     const sizeClasses = {
@@ -99,8 +100,8 @@ export default function CustomInput({
       minimal: "border-0 border-b-2 rounded-none bg-transparent",
     };
 
-    // State classes
-    const stateClasses = hasError ? "border-red-500 focus:border-red-500" : "";
+    // State classes - only show error border, no focus ring
+    const stateClasses = hasError ? "border-red-500 focus:border-red-500 focus:ring-0" : "";
     const disabledClasses = disabled
       ? "opacity-60 cursor-not-allowed bg-gray-50"
       : "";
@@ -241,14 +242,19 @@ export default function CustomInput({
               },
             },
             "&:focus-within": {
-              outline: "none",
-              boxShadow: "none",
-              border: "none",
+              outline: "none !important",
+              boxShadow: "none !important",
+              border: "none !important",
               "& .MuiInputBase-input": {
-                outline: "none",
-                boxShadow: "none",
-                border: "none",
+                outline: "none !important",
+                boxShadow: "none !important",
+                border: "none !important",
               },
+            },
+            "&:focus": {
+              outline: "none !important",
+              boxShadow: "none !important",
+              border: "none !important",
             },
             "&:before": {
               display: "none",

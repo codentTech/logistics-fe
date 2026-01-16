@@ -146,6 +146,7 @@ module.exports = {
         "slide-in": "slideIn 0.3s ease-out",
         "scale-in": "scaleIn 0.2s ease-out",
         "bounce-subtle": "bounceSubtle 2s infinite",
+        shimmer: "shimmer 2s infinite",
       },
 
       keyframes: {
@@ -164,6 +165,10 @@ module.exports = {
         bounceSubtle: {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-5px)" },
+        },
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
         },
       },
 

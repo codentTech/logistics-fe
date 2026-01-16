@@ -232,26 +232,37 @@ export const shipmentsSlice = createSlice({
       state.shipments.current = action.payload;
     },
     updateCurrentShipment: (state, action) => {
-      if (state.shipments.current?.id === action.payload.id) {
+      const payload = action.payload;
+      if (!payload || !payload.id) return;
+
+      if (state.shipments.current?.id === payload.id) {
         const updatedShipment = {
           ...state.shipments.current,
-          ...action.payload,
+          ...payload,
         };
         
-        if (action.payload.driverId === null || action.payload.driverId === undefined) {
+        // Handle driverId null (rejection/cancellation)
+        if (payload.driverId === null || payload.driverId === undefined) {
           updatedShipment.assignedAt = null;
           updatedShipment.driver = null;
           updatedShipment.driverId = null;
         }
         
-        // Ensure status is updated if provided
-        if (action.payload.status) {
-          updatedShipment.status = action.payload.status;
+        // Always update status if provided (don't check if it exists)
+        if (payload.status !== undefined && payload.status !== null) {
+          updatedShipment.status = payload.status;
         }
         
         state.shipments.current = updatedShipment;
-      } else if (action.payload.id && !state.shipments.current) {
-        state.shipments.current = action.payload;
+      } else if (payload.id && !state.shipments.current) {
+        // If no current shipment, set it with the payload
+        state.shipments.current = {
+          ...payload,
+          // Ensure driverId null is handled
+          ...(payload.driverId === null || payload.driverId === undefined
+            ? { assignedAt: null, driver: null, driverId: null }
+            : {}),
+        };
       }
       state.shipments.updatedAt = Date.now();
     },

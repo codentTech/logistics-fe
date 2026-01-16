@@ -67,11 +67,13 @@ export default function useSocket() {
       auth: {
         token: user.token,
       },
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"], // Try polling first, then websocket
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: Infinity,
       timeout: 20000,
+      forceNew: false, // Reuse existing connection if available
+      upgrade: true, // Allow upgrade from polling to websocket
     });
 
     globalSocket = socket;
@@ -95,6 +97,13 @@ export default function useSocket() {
 
     socket.on("driver-location-update", (payload) => {
       if (payload && payload.driverId && payload.location) {
+        console.log(`[Frontend] 📍 Driver location update received:`, {
+          driverId: payload.driverId,
+          location: payload.location,
+          source: payload.source || 'UNKNOWN',
+          timestamp: payload.location.timestamp,
+        });
+        
         // Directly dispatch to Redux to ensure location updates are always processed
         dispatch(
           updateDriverLocation({
@@ -102,6 +111,9 @@ export default function useSocket() {
             location: payload.location,
           })
         );
+        
+        console.log(`[Frontend] ✅ Location updated in Redux for driver ${payload.driverId}`);
+        
         // Also call callback if it exists (for backward compatibility)
         if (locationUpdateCallback) {
           locationUpdateCallback(payload);

@@ -14,7 +14,6 @@ import { usePathname } from "next/navigation";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
 import ROLES from "@/common/constants/role.constant";
 
 /**
@@ -44,29 +43,23 @@ export default function Private({ component, title = NAVBAR_TITLE.DASHBOARD }) {
 
   // Define all possible nav items
   const allNavItems = [
-    { 
-      path: "/dashboard", 
-      label: "Dashboard", 
+    {
+      path: "/dashboard",
+      label: "Dashboard",
       icon: DashboardIcon,
-      roles: [ROLES.OPS_ADMIN, ROLES.DRIVER, ROLES.CUSTOMER] // All roles can access
+      roles: [ROLES.OPS_ADMIN, ROLES.DRIVER, ROLES.CUSTOMER], // All roles can access
     },
-    { 
-      path: "/shipments", 
-      label: "Shipments", 
+    {
+      path: "/shipments",
+      label: "Shipments",
       icon: LocalShippingIcon,
-      roles: [ROLES.OPS_ADMIN, ROLES.DRIVER, ROLES.CUSTOMER] // All roles can access
+      roles: [ROLES.OPS_ADMIN, ROLES.DRIVER, ROLES.CUSTOMER], // All roles can access
     },
-    { 
-      path: "/drivers", 
-      label: "Drivers", 
+    {
+      path: "/drivers",
+      label: "Drivers",
       icon: DirectionsCarIcon,
-      roles: [ROLES.OPS_ADMIN] // Admin only
-    },
-    { 
-      path: "/driver-location", 
-      label: "Share Location", 
-      icon: LocationOnIcon,
-      roles: [ROLES.DRIVER] // Driver only
+      roles: [ROLES.OPS_ADMIN], // Admin only
     },
   ];
 

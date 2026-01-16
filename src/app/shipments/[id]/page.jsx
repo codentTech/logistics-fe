@@ -3,7 +3,7 @@
 import { use } from "react";
 import Auth from "@/auth/auth.component";
 import AUTH from "@/common/constants/auth.constant";
-import ShipmentDetails from "@/components/shipments/shipment-details.component";
+import ShipmentDetails from "@/components/shipments/details/shipment-details.component";
 import NAVBAR_TITLE from "@/common/constants/navbar-title.constant";
 import RoleGuard from "@/common/components/role-guard/role-guard.component";
 import ROLES from "@/common/constants/role.constant";

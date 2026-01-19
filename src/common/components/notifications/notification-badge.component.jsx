@@ -223,10 +223,29 @@ export default function NotificationBadge() {
                               if (!notification.createdAt) {
                                 return "Just now";
                               }
-                              const date = new Date(notification.createdAt);
+                              
+                              // Parse the date string - handle ISO strings and other formats
+                              let date;
+                              if (typeof notification.createdAt === 'string') {
+                                date = new Date(notification.createdAt);
+                                if (isNaN(date.getTime())) {
+                                  const timestamp = Date.parse(notification.createdAt);
+                                  if (!isNaN(timestamp)) {
+                                    date = new Date(timestamp);
+                                  } else {
+                                    return "Just now";
+                                  }
+                                }
+                              } else if (notification.createdAt instanceof Date) {
+                                date = notification.createdAt;
+                              } else {
+                                return "Just now";
+                              }
+                              
                               if (isNaN(date.getTime())) {
                                 return "Just now";
                               }
+                              
                               return formatDistanceToNow(date, {
                                 addSuffix: true,
                               });

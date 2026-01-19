@@ -149,8 +149,17 @@ export const notificationsSlice = createSlice({
       .addCase(getNotifications.fulfilled, (state, action) => {
         state.list.isLoading = false;
         state.list.isSuccess = true;
-        state.notifications = action.payload.notifications || [];
-        state.total = action.payload.total || 0;
+        // Filter out invalid/empty notifications
+        const allNotifications = action.payload?.notifications || [];
+        state.notifications = allNotifications.filter((notification) => {
+          return (
+            notification &&
+            typeof notification === 'object' &&
+            notification.id &&
+            (notification.title || notification.message)
+          );
+        });
+        state.total = action.payload?.total || 0;
       })
       .addCase(getNotifications.rejected, (state, action) => {
         state.list.isLoading = false;

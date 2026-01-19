@@ -1,6 +1,5 @@
 import api from '@/common/utils/api';
 
-// Get all drivers
 const getAllDrivers = async (params = {}) => {
   const response = await api().get('/v1/drivers', { params });
   return response.data;

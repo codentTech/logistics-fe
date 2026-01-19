@@ -20,6 +20,7 @@ import {
 import useSocket from "@/common/hooks/use-socket.hook";
 import driversService from "@/provider/features/drivers/drivers.service";
 import { formatShipmentStatus } from "@/common/utils/status.util";
+import { refreshConfig } from "@/common/config/refresh.config";
 
 const STATUS_OPTIONS = ["ASSIGNED", "APPROVED", "IN_TRANSIT", "DELIVERED"];
 
@@ -35,7 +36,10 @@ export function useShipmentDetailsHook(shipmentId) {
     approveAssignment: approveAssignmentState,
     rejectAssignment: rejectAssignmentState,
   } = useSelector((state) => state.shipments);
-  const drivers = useSelector((state) => state.drivers);
+  const drivers = useSelector((state) => ({
+    list: state.drivers?.list || [],
+    locations: state.drivers?.locations || {},
+  }));
 
   // Subscribe directly to current shipment to ensure re-renders on updates
   const currentShipment = useSelector(
@@ -104,6 +108,13 @@ export function useShipmentDetailsHook(shipmentId) {
     dispatch(getAllDrivers());
     // Load all shipments for route data (required by map component to fetch routes)
     dispatch(getAllShipments());
+    
+    // Refresh drivers periodically to update online status in real-time
+    const interval = setInterval(() => {
+      dispatch(getAllDrivers());
+    }, refreshConfig.dashboardSummaryInterval);
+    
+    return () => clearInterval(interval);
   }, [dispatch, shipmentId]);
 
   // Fetch driver location from API on mount if shipment is IN_TRANSIT
@@ -137,15 +148,8 @@ export function useShipmentDetailsHook(shipmentId) {
               },
             })
           );
-          console.log(
-            `[ShipmentDetails] ✅ Fetched driver location from API for driver ${driverId}`
-          );
         }
       } catch (error) {
-        console.warn(
-          `[ShipmentDetails] ⚠️ Failed to fetch driver location from API:`,
-          error
-        );
         // Don't show error to user - Socket.IO will update it eventually
       }
     };
@@ -165,9 +169,6 @@ export function useShipmentDetailsHook(shipmentId) {
         payload.shipmentId === shipmentId &&
         (payload.newStatus === "APPROVED" || payload.newStatus === "IN_TRANSIT")
       ) {
-        console.log(
-          `[ShipmentDetails] 🔄 Status changed to ${payload.newStatus}, refreshing shipments for route data`
-        );
         dispatch(getAllShipments());
       }
     };
@@ -409,8 +410,15 @@ export function useShipmentDetailsHook(shipmentId) {
       .map((driver) => {
         const driverName = driver.name || driver.id.substring(0, 8);
         const driverEmail = driver.user?.email || "";
-        // Show name and email to help distinguish drivers
-        const label = driverEmail ? `${driverName} (${driverEmail})` : driverName;
+        
+        // Use isOnline from driver object (from API, based on Socket.IO room membership)
+        const isOnline = typeof driver.isOnline === 'boolean' ? driver.isOnline : false;
+        const onlineStatus = isOnline ? " (Online)" : " (Offline)";
+        
+        // Show name, email, and online status to help distinguish drivers
+        const label = driverEmail 
+          ? `${driverName} ${onlineStatus}` 
+          : `${driverName}${onlineStatus}`;
 
         return {
           label,

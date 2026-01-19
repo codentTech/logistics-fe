@@ -31,10 +31,30 @@ export default function NotificationBadge() {
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
 
-  const { notifications, unreadCount } = useSelector((state) => ({
-    notifications: state.notifications.notifications,
-    unreadCount: state.notifications.unreadCount,
-  }));
+  const { notifications, unreadCount } = useSelector((state) => {
+    // Filter out invalid/empty notifications
+    const rawNotificationsList = state.notifications?.notifications || [];
+    const validNotifications = rawNotificationsList.filter(
+      (notification) => {
+        return (
+          notification &&
+          typeof notification === 'object' &&
+          notification.id &&
+          (notification.title || notification.message)
+        );
+      }
+    );
+    
+    // Calculate unread count based on valid notifications
+    const validUnreadCount = validNotifications.filter(
+      (notification) => notification.status === 'UNREAD'
+    ).length;
+    
+    return {
+      notifications: validNotifications,
+      unreadCount: validUnreadCount,
+    };
+  });
 
   // Fetch notifications and unread count on mount
   useEffect(() => {
@@ -117,7 +137,7 @@ export default function NotificationBadge() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative z-[2000]">
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
@@ -135,9 +155,8 @@ export default function NotificationBadge() {
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="fixed w-96 rounded-lg border border-gray-200 bg-white shadow-lg max-h-[500px] overflow-hidden flex flex-col"
+          className="fixed w-96 rounded-lg border border-gray-200 bg-white shadow-lg max-h-[500px] overflow-hidden flex flex-col z-[2000]"
           style={{
-            zIndex: 99999,
             top: `${dropdownPosition.top}px`,
             right: `${dropdownPosition.right}px`,
           }}

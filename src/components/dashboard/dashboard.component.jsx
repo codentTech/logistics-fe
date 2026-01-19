@@ -177,7 +177,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               {/* Driver Selection Dropdown - Shows ALL drivers */}
               {drivers.list.length > 0 ? (
-                <div className="min-w-[300px] relative z-[1000]">
+                <div className="min-w-[300px] relative">
                   <SimpleSelect
                     placeholder="All Drivers"
                     options={driverOptions}

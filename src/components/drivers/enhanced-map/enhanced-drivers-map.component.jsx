@@ -213,7 +213,7 @@ export default function EnhancedDriversMap({ selectedDriverId = null, showOnlyDr
   }
 
   return (
-    <div ref={containerRef} className="relative h-96 w-full overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <div ref={containerRef} className="relative h-96 w-full overflow-hidden rounded-lg border border-gray-200 bg-white z-10">
       {/* Map Controls */}
       <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
         <button

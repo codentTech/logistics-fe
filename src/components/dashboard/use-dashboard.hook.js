@@ -40,7 +40,7 @@ export function useDashboardHook() {
 
   // Memoize online drivers and options to prevent dropdown from resetting
   const { onlineDrivers, driverOptions } = useMemo(() => {
-    // Filter online drivers (for map display)
+    // Filter online drivers (for map display) - drivers with location data
     const onlineDrivers = drivers.list.filter((driver) => {
       const location = drivers.locations[driver.id] || driver.location;
       return (
@@ -55,6 +55,7 @@ export function useDashboardHook() {
     });
 
     // Dropdown should show ALL drivers (not just online)
+    // Use isOnline from API response (based on Socket.IO room membership)
     const driverOptions = [
       { value: null, label: "All Drivers" },
       ...drivers.list.map((driver) => {
@@ -62,9 +63,13 @@ export function useDashboardHook() {
           driver.name?.trim() ||
           driver.user?.name?.trim() ||
           `Driver ${driver.id?.slice(0, 8) || "Unknown"}`;
-        const isOnline = onlineDrivers.some(
-          (online) => online.id === driver.id
-        );
+        // Use isOnline from driver object (from API, based on Socket.IO room membership)
+        // If isOnline is not provided, fallback to location check for backward compatibility
+        const isOnline = 
+          typeof driver.isOnline === 'boolean' 
+            ? driver.isOnline 
+            : onlineDrivers.some((online) => online.id === driver.id);
+        
         return {
           value: driver.id,
           label: `${driverName}${isOnline ? " (Online)" : " (Offline)"}`,
@@ -92,12 +97,15 @@ export function useDashboardHook() {
 
   useEffect(() => {
     dispatch(getSummary());
-    dispatch(getAllDrivers()); // Load drivers once on mount
-    dispatch(getAllShipments()); // Load shipments for route data
-    // Refresh summary at configured interval for real-time updates
+    dispatch(getAllDrivers());
+    dispatch(getAllShipments());
+    
     const interval = setInterval(() => {
       dispatch(getSummary());
+      // Refresh drivers list to update isOnline status based on Socket.IO rooms
+      dispatch(getAllDrivers());
     }, refreshConfig.dashboardSummaryInterval);
+    
     return () => clearInterval(interval);
   }, [dispatch]);
 
@@ -150,6 +158,7 @@ export function useDashboardHook() {
     deliveredToday: 0,
     driversOnline: 0,
   };
+
 
   const cards = useMemo(() => {
     if (!isAdmin && !isDriver && !isCustomer) return [];

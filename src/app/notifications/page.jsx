@@ -30,12 +30,30 @@ function NotificationsPage() {
   const [page, setPage] = useState(1);
   const limit = 20;
 
-  const { notifications, total, unreadCount, list } = useSelector((state) => ({
-    notifications: state.notifications.notifications,
-    total: state.notifications.total,
-    unreadCount: state.notifications.unreadCount,
-    list: state.notifications.list,
-  }));
+  const { notifications, total, unreadCount, list } = useSelector((state) => {
+    // Filter out invalid/empty notifications
+    const allNotifications = state.notifications?.notifications || [];
+    const validNotifications = allNotifications.filter((notification) => {
+      return (
+        notification &&
+        typeof notification === 'object' &&
+        notification.id &&
+        (notification.title || notification.message)
+      );
+    });
+    
+    // Calculate unread count based on valid notifications
+    const validUnreadCount = validNotifications.filter(
+      (notification) => notification.status === 'UNREAD'
+    ).length;
+    
+    return {
+      notifications: validNotifications,
+      total: state.notifications?.total || 0,
+      unreadCount: validUnreadCount,
+      list: state.notifications?.list || { isLoading: false, isSuccess: false, isError: false },
+    };
+  });
 
   useEffect(() => {
     dispatch(getNotifications({ limit, offset: (page - 1) * limit }));
@@ -146,10 +164,22 @@ function NotificationsPage() {
                             {notification.message}
                           </p>
                           <p className="text-xs text-gray-400 mt-2">
-                            {formatDistanceToNow(
-                              new Date(notification.createdAt),
-                              { addSuffix: true }
-                            )}
+                            {(() => {
+                              try {
+                                if (!notification.createdAt) {
+                                  return "Just now";
+                                }
+                                const date = new Date(notification.createdAt);
+                                if (isNaN(date.getTime())) {
+                                  return "Just now";
+                                }
+                                return formatDistanceToNow(date, {
+                                  addSuffix: true,
+                                });
+                              } catch (error) {
+                                return "Just now";
+                              }
+                            })()}
                           </p>
                         </div>
                         {notification.status === "UNREAD" && (

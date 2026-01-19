@@ -17,6 +17,23 @@ import { getUser } from "@/common/utils/users.util";
 let globalSocket = null;
 let locationUpdateCallback = null;
 
+// Export function to disconnect socket (used during logout)
+export const disconnectSocket = () => {
+  if (globalSocket) {
+    const socket = globalSocket;
+    globalSocket = null; // Clear reference first to prevent race conditions
+    
+    if (socket.connected) {
+      socket.disconnect();
+    }
+    
+    // Remove all listeners after disconnecting
+    if (socket && typeof socket.removeAllListeners === 'function') {
+      socket.removeAllListeners();
+    }
+  }
+};
+
 export default function useSocket() {
   const socketRef = useRef(null);
   const dispatch = useDispatch();
@@ -37,53 +54,51 @@ export default function useSocket() {
   useEffect(() => {
     const user = getUser();
     if (!user || !user.token) {
-      console.log("⚠️ useSocket: No user or token found");
       return;
     }
 
     // If global socket exists and is connected, use it immediately
     if (globalSocket && globalSocket.connected) {
       socketRef.current = globalSocket;
-      console.log("✅ Reusing existing global socket:", globalSocket.id);
       return;
     }
 
     // If socket is already being created, wait for it
     if (globalSocket && !globalSocket.connected) {
-      console.log("⏳ Socket is connecting, waiting...");
       socketRef.current = globalSocket;
       return;
     }
-
-    console.log("🔍 useSocket: Creating new socket connection");
 
     const socketUrl =
       process.env.NEXT_PUBLIC_SOCKET_URL ||
       process.env.NEXT_PUBLIC_MAIN_URL ||
       "http://localhost:5000";
 
-    console.log("🔌 Creating new socket connection to:", socketUrl);
     const socket = io(socketUrl, {
       auth: {
         token: user.token,
       },
-      transports: ["polling", "websocket"], // Try polling first, then websocket
+      transports: ["polling", "websocket"],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: Infinity,
       timeout: 20000,
-      forceNew: false, // Reuse existing connection if available
-      upgrade: true, // Allow upgrade from polling to websocket
+      forceNew: false,
+      upgrade: true,
     });
 
     globalSocket = socket;
-    socketRef.current = socket; // Set ref immediately so component can use it
+    socketRef.current = socket;
 
     socket.on("connect", () => {
-      console.log("✅ Socket connected:", socket.id);
       if (user.tenantId) {
         socket.emit("join-tenant", user.tenantId);
-        console.log("👋 Joined tenant room:", user.tenantId);
+      }
+    });
+
+    socket.on("disconnect", () => {
+      if (globalSocket === socket) {
+        globalSocket = null;
       }
     });
 
@@ -97,14 +112,6 @@ export default function useSocket() {
 
     socket.on("driver-location-update", (payload) => {
       if (payload && payload.driverId && payload.location) {
-        console.log(`[Frontend] 📍 Driver location update received:`, {
-          driverId: payload.driverId,
-          location: payload.location,
-          source: payload.source || 'UNKNOWN',
-          timestamp: payload.location.timestamp,
-        });
-        
-        // Directly dispatch to Redux to ensure location updates are always processed
         dispatch(
           updateDriverLocation({
             driverId: payload.driverId,
@@ -112,9 +119,6 @@ export default function useSocket() {
           })
         );
         
-        console.log(`[Frontend] ✅ Location updated in Redux for driver ${payload.driverId}`);
-        
-        // Also call callback if it exists (for backward compatibility)
         if (locationUpdateCallback) {
           locationUpdateCallback(payload);
         }

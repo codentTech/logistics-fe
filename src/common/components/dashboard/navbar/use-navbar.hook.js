@@ -2,6 +2,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, setLogoutLoader } from "@/provider/features/auth/auth.slice";
+import { disconnectSocket } from "@/common/hooks/use-socket.hook";
 
 export default function useNavbar() {
   const dispatch = useDispatch();
@@ -58,6 +59,13 @@ export default function useNavbar() {
 
   const handleLogout = async () => {
     setOpen(false);
+    
+    // Disconnect Socket.IO connection before logout to ensure driver is marked offline
+    disconnectSocket();
+    
+    // Small delay to ensure backend processes disconnect
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     await dispatch(logout());
     router.push("/login");
   };
